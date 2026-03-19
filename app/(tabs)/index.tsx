@@ -7,6 +7,7 @@ import {
   Pressable,
   Dimensions,
   Image,
+  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -27,6 +28,7 @@ const features = [
     icon: 'storefront-outline' as const,
     route: '/(tabs)/shop' as const,
     gradient: Gradients.storeCard,
+    bgImage: require('@/assets/images/poses/coffee-shop.jpg'),
   },
   {
     id: 'tryon',
@@ -35,6 +37,7 @@ const features = [
     icon: 'shirt-outline' as const,
     route: '/(tabs)/tryon' as const,
     gradient: Gradients.tryonCard,
+    bgImage: require('@/assets/images/poses/confident-standing.jpg'),
   },
   {
     id: 'stylist',
@@ -43,6 +46,7 @@ const features = [
     icon: 'sparkles-outline' as const,
     route: '/(tabs)/style' as const,
     gradient: Gradients.stylistCard,
+    bgImage: require('@/assets/images/poses/business-portrait.jpg'),
   },
   {
     id: 'pose',
@@ -51,6 +55,7 @@ const features = [
     icon: 'camera-outline' as const,
     route: '/(tabs)/style' as const,
     gradient: Gradients.poseCard,
+    bgImage: require('@/assets/images/poses/model-turn.jpg'),
   },
 ];
 
@@ -79,11 +84,20 @@ export default function HomeScreen() {
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}>
-        {/* Header */}
+        {/* Header with logo */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
-          <View>
-            <Text style={styles.greeting}>{getGreeting()}</Text>
-            <Text style={styles.userName}>{firstName}</Text>
+          <View style={styles.headerLeft}>
+            <View style={styles.logoRow}>
+              <LinearGradient
+                colors={['#c9a96e', '#e8c98a']}
+                style={styles.logoCircle}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 1 }}>
+                <Ionicons name="diamond" size={16} color="#fff" />
+              </LinearGradient>
+              <Text style={styles.brandName}>TryVerse</Text>
+            </View>
+            <Text style={styles.greeting}>{getGreeting()}, <Text style={styles.userName}>{firstName}</Text></Text>
           </View>
           <Pressable
             onPress={() => router.push('/(tabs)/profile')}
@@ -96,6 +110,28 @@ export default function HomeScreen() {
               </Text>
             </LinearGradient>
           </Pressable>
+        </Animated.View>
+
+        {/* Hero Banner with slogan */}
+        <Animated.View entering={FadeInDown.delay(150)}>
+          <ImageBackground
+            source={require('@/assets/images/poses/sunlight-portrait.jpg')}
+            style={styles.heroBanner}
+            imageStyle={styles.heroBannerImage}>
+            <LinearGradient
+              colors={['rgba(26,26,46,0.75)', 'rgba(201,169,110,0.6)']}
+              style={styles.heroOverlay}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}>
+              <Ionicons name="diamond" size={28} color="#e8c98a" />
+              <Text style={styles.heroSlogan}>Try It Before You Buy It</Text>
+              <Text style={styles.heroSub}>AI-powered virtual try-on for every outfit</Text>
+              <View style={styles.heroPrivacy}>
+                <Ionicons name="shield-checkmark-outline" size={14} color="rgba(255,255,255,0.7)" />
+                <Text style={styles.heroPrivacyText}>Your photos are never saved</Text>
+              </View>
+            </LinearGradient>
+          </ImageBackground>
         </Animated.View>
 
         {/* Pro banner for free users */}
@@ -152,20 +188,25 @@ export default function HomeScreen() {
               <Pressable
                 onPress={() => router.push(feature.route)}
                 style={styles.featureCardWrapper}>
-                <LinearGradient
-                  colors={feature.gradient}
+                <ImageBackground
+                  source={feature.bgImage}
                   style={styles.featureCard}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}>
-                  <View style={styles.featureIconBg}>
-                    <Ionicons name={feature.icon} size={24} color="#fff" />
-                  </View>
-                  <Text style={styles.featureTitle}>{feature.title}</Text>
-                  <Text style={styles.featureDesc}>{feature.description}</Text>
-                  <View style={styles.featureArrow}>
-                    <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.8)" />
-                  </View>
-                </LinearGradient>
+                  imageStyle={styles.featureCardBgImage}>
+                  <LinearGradient
+                    colors={[feature.gradient[0] + 'DD', feature.gradient[1] + 'EE']}
+                    style={styles.featureCardOverlay}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 1 }}>
+                    <View style={styles.featureIconBg}>
+                      <Ionicons name={feature.icon} size={24} color="#fff" />
+                    </View>
+                    <Text style={styles.featureTitle}>{feature.title}</Text>
+                    <Text style={styles.featureDesc}>{feature.description}</Text>
+                    <View style={styles.featureArrow}>
+                      <Ionicons name="arrow-forward" size={16} color="rgba(255,255,255,0.8)" />
+                    </View>
+                  </LinearGradient>
+                </ImageBackground>
               </Pressable>
             </Animated.View>
           ))}
@@ -219,10 +260,30 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     marginTop: Spacing.base,
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.base,
+  },
+  headerLeft: {},
+  logoRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  logoCircle: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  brandName: {
+    fontSize: FontSize.md,
+    fontWeight: '800',
+    color: Colors.light.charcoal,
+    letterSpacing: -0.3,
   },
   greeting: { fontSize: FontSize.sm, color: Colors.light.textSecondary, fontWeight: '500' },
-  userName: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.light.charcoal, marginTop: 2 },
+  userName: { fontWeight: '800', color: Colors.light.charcoal },
   avatarButton: {},
   avatar: {
     width: 48,
@@ -232,6 +293,53 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   avatarText: { fontSize: FontSize.lg, fontWeight: '700', color: '#1a1a2e' },
+  heroBanner: {
+    height: 160,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    marginBottom: Spacing.xl,
+  },
+  heroBannerImage: {
+    borderRadius: BorderRadius.xl,
+  },
+  heroOverlay: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+  },
+  heroSlogan: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
+    color: '#fff',
+    textAlign: 'center',
+    marginTop: Spacing.sm,
+    letterSpacing: -0.3,
+    textShadowColor: 'rgba(0,0,0,0.3)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 4,
+  },
+  heroSub: {
+    fontSize: FontSize.xs,
+    color: 'rgba(255,255,255,0.85)',
+    textAlign: 'center',
+    marginTop: 4,
+  },
+  heroPrivacy: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    marginTop: Spacing.sm,
+    backgroundColor: 'rgba(0,0,0,0.2)',
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 4,
+    borderRadius: BorderRadius.full,
+  },
+  heroPrivacyText: {
+    fontSize: 10,
+    color: 'rgba(255,255,255,0.7)',
+  },
   proBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -280,10 +388,25 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
     marginBottom: Spacing.xl,
   },
-  featureCardWrapper: { width: CARD_WIDTH },
+  featureCardWrapper: {
+    width: CARD_WIDTH,
+    borderRadius: BorderRadius.xl,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 6,
+  },
   featureCard: {
     width: CARD_WIDTH,
     height: CARD_WIDTH * 1.15,
+  },
+  featureCardBgImage: {
+    borderRadius: BorderRadius.xl,
+  },
+  featureCardOverlay: {
+    flex: 1,
     borderRadius: BorderRadius.xl,
     padding: Spacing.base,
     justifyContent: 'space-between',
@@ -292,17 +415,17 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
   },
   featureTitle: { fontSize: FontSize.md, fontWeight: '700', color: '#fff', lineHeight: 22 },
-  featureDesc: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.8)', lineHeight: 16 },
+  featureDesc: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.85)', lineHeight: 16 },
   featureArrow: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.25)',
     justifyContent: 'center',
     alignItems: 'center',
     alignSelf: 'flex-end',

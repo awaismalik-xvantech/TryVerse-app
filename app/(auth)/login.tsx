@@ -10,6 +10,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Image,
 } from 'react-native';
 import { useRouter, Link } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -45,6 +46,13 @@ export default function LoginScreen() {
     <KeyboardAvoidingView
       style={styles.container}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      {/* Subtle background image */}
+      <Image
+        source={require('@/assets/images/poses/sunlight-portrait.jpg')}
+        style={styles.bgImage}
+        resizeMode="cover"
+      />
+      <View style={styles.bgOverlay} />
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -56,10 +64,10 @@ export default function LoginScreen() {
             style={styles.logoCircle}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
-            <Ionicons name="diamond" size={36} color="#1a1a2e" />
+            <Ionicons name="diamond" size={36} color="#fff" />
           </LinearGradient>
           <Text style={styles.brandName}>TryVerse</Text>
-          <Text style={styles.tagline}>Your AI Fashion Companion</Text>
+          <Text style={styles.tagline}>Try It Before You Buy It</Text>
         </Animated.View>
 
         {/* Form */}
@@ -142,6 +150,12 @@ export default function LoginScreen() {
             </Pressable>
           </Link>
         </Animated.View>
+
+        {/* Privacy reassurance */}
+        <Animated.View entering={FadeInDown.delay(450)} style={styles.privacyRow}>
+          <Ionicons name="shield-checkmark-outline" size={16} color={Colors.light.textMuted} />
+          <Text style={styles.privacyText}>We never save your photos</Text>
+        </Animated.View>
       </ScrollView>
     </KeyboardAvoidingView>
   );
@@ -151,6 +165,13 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#fff',
+  },
+  bgImage: {
+    ...StyleSheet.absoluteFillObject,
+  },
+  bgOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(255,255,255,0.5)',
   },
   scrollContent: {
     flexGrow: 1,
@@ -282,5 +303,17 @@ const styles = StyleSheet.create({
     fontSize: FontSize.base,
     color: Colors.light.gold,
     fontWeight: '700',
+  },
+  privacyRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.xs,
+    marginTop: Spacing['2xl'],
+    marginBottom: Spacing.xl,
+  },
+  privacyText: {
+    fontSize: FontSize.xs,
+    color: Colors.light.textMuted,
   },
 });

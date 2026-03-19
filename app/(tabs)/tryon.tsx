@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -10,16 +10,48 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
+  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { apiUpload, apiFetch, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 
 const { width } = Dimensions.get('window');
+
+function ResultSuccessView({ resultImageUrl }: { resultImageUrl: string }) {
+  const scaleAnim = useRef(new Animated.Value(0.8)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(scaleAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, [resultImageUrl, scaleAnim, fadeAnim]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.resultContainer,
+        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
+      ]}>
+      <Text style={styles.resultTitle}>Your Try-On Result</Text>
+      <Image source={{ uri: resultImageUrl }} style={styles.resultImage} />
+    </Animated.View>
+  );
+}
 
 export default function TryOnScreen() {
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
@@ -68,13 +100,16 @@ export default function TryOnScreen() {
   };
 
   const uploadSelfie = async (uri: string) => {
+    const endpoint = `${API_URL}/api/tryon/upload-user-photo`;
+    console.log('[UPLOAD] Virtual Try-On: upload started', { endpoint });
     setIsUploading(true);
-    const res = await apiUpload('/api/tryon/upload', uri, 'file', { body_type: bodyType });
+    const res = await apiUpload('/api/tryon/upload-user-photo', uri, 'file');
     setIsUploading(false);
     if (res.ok && res.data) {
-      const data = res.data as { file_id: string };
-      setFileId(data.file_id);
+      console.log('[UPLOAD] Virtual Try-On: upload completed', { endpoint });
+      setFileId('uploaded');
     } else {
+      console.log('[UPLOAD] Virtual Try-On: upload failed', { endpoint, error: res.error });
       Alert.alert('Upload Failed', (res.error as string) || 'Could not upload image');
     }
   };
@@ -92,27 +127,34 @@ export default function TryOnScreen() {
     setIsGenerating(true);
     setResultImageUrl(null);
 
+    const endpoint = `${API_URL}/api/tryon/fetch-and-tryon`;
+    console.log('[GENERATION] Virtual Try-On: generation started', { endpoint, productUrl: productUrl.trim() });
+
     try {
-      const response = await apiFetch('/api/tryon/generate', {
+      const response = await apiFetch('/api/tryon/fetch-and-tryon', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          file_id: fileId,
-          product_url: productUrl.trim(),
-          body_type: bodyType,
-        }),
+        body: JSON.stringify({ url: productUrl.trim() }),
       });
+
+      console.log('[GENERATION] Virtual Try-On: response received', { status: response.status, ok: response.ok });
 
       if (response.ok) {
         const data = await response.json();
-        if (data.file_id) {
-          setResultImageUrl(`${API_URL}/api/tryon/image/${data.file_id}`);
+        console.log('[GENERATION] Virtual Try-On: generation completed', { hasResult: !!data.result_photo_url });
+        if (data.result_photo_url) {
+          const url = data.result_photo_url.startsWith('http')
+            ? data.result_photo_url
+            : `${API_URL}${data.result_photo_url}`;
+          setResultImageUrl(url);
         }
       } else {
         const err = await response.json().catch(() => null);
+        console.log('[GENERATION] Virtual Try-On: generation failed', { endpoint, status: response.status, err });
         Alert.alert('Generation Failed', err?.detail || 'Could not generate try-on');
       }
-    } catch {
+    } catch (e) {
+      console.log('[GENERATION] Virtual Try-On: generation error', { endpoint, error: e });
       Alert.alert('Error', 'Connection failed');
     }
     setIsGenerating(false);
@@ -128,6 +170,7 @@ export default function TryOnScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <GeneratingOverlay visible={isGenerating} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         <Text style={styles.title}>Virtual Try-On</Text>
         <Text style={styles.subtitle}>See any outfit on yourself with AI</Text>
@@ -222,10 +265,7 @@ export default function TryOnScreen() {
 
         {/* Result */}
         {resultImageUrl && (
-          <Animated.View entering={FadeIn.duration(500)} style={styles.resultContainer}>
-            <Text style={styles.resultTitle}>Your Try-On Result</Text>
-            <Image source={{ uri: resultImageUrl }} style={styles.resultImage} />
-          </Animated.View>
+          <ResultSuccessView resultImageUrl={resultImageUrl} />
         )}
 
         <View style={{ height: 120 }} />

@@ -6,11 +6,14 @@ import 'react-native-reanimated';
 export default function RootLayout() {
   return (
     <AuthProvider>
-      <Stack screenOptions={{ headerShown: false }}>
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        <Stack.Screen name="index" />
         <Stack.Screen name="(auth)" />
         <Stack.Screen name="(tabs)" />
-        <Stack.Screen name="tryon" options={{ presentation: 'modal' }} />
-        <Stack.Screen name="store-tryon" options={{ presentation: 'modal' }} />
+        <Stack.Screen name="store-tryon" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="privacy-policy" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="contact-us" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
+        <Stack.Screen name="about" options={{ presentation: 'modal', animation: 'slide_from_bottom' }} />
       </Stack>
       <StatusBar style="dark" />
     </AuthProvider>

@@ -16,8 +16,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
-import { apiGet, apiUpload, apiFetch, API_URL } from '@/lib/api';
+import { apiGet, apiFetch, getToken, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 
 const { width } = Dimensions.get('window');
 
@@ -42,7 +43,7 @@ export default function StoreTryOnScreen() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
-  const [fileId, setFileId] = useState<string | null>(null);
+  const [sessionId, setSessionId] = useState<number | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
@@ -53,9 +54,12 @@ export default function StoreTryOnScreen() {
   }, [productId]);
 
   const loadProduct = async () => {
-    if (!productId) return;
-    const res = await apiGet<Product>(`/api/store/products/${productId}`);
-    if (res.ok && res.data) setProduct(res.data);
+    if (!productId || !storeId) return;
+    const res = await apiGet<Product[]>(`/api/store/brands/${storeId}/products`);
+    if (res.ok && res.data) {
+      const found = res.data.find((p) => p.id === parseInt(productId));
+      if (found) setProduct(found);
+    }
     setLoading(false);
   };
 
@@ -88,41 +92,66 @@ export default function StoreTryOnScreen() {
   };
 
   const uploadSelfie = async (uri: string) => {
+    const endpoint = `${API_URL}/api/store/upload-user-image?body_type=${bodyType}`;
+    console.log('[UPLOAD] Store Try-On: upload started', { endpoint });
     setIsUploading(true);
-    const res = await apiUpload('/api/store/upload', uri, 'file', {
-      body_type: bodyType,
-      product_id: String(productId),
-    });
-    setIsUploading(false);
-    if (res.ok && res.data) {
-      setFileId((res.data as { file_id: string }).file_id);
-    } else {
-      Alert.alert('Upload Failed', 'Could not upload image');
+    const token = await getToken();
+    const formData = new FormData();
+    const filename = uri.split('/').pop() || 'photo.jpg';
+    const ext = filename.split('.').pop() || 'jpg';
+    formData.append('file', { uri, name: filename, type: `image/${ext}` } as unknown as Blob);
+
+    try {
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        body: formData,
+      });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[UPLOAD] Store Try-On: upload completed', { endpoint, sessionId: data.session_id });
+        setSessionId(data.session_id);
+      } else {
+        const err = await response.json().catch(() => null);
+        console.log('[UPLOAD] Store Try-On: upload failed', { endpoint, status: response.status, err });
+        Alert.alert('Upload Failed', err?.detail || 'Could not upload image');
+      }
+    } catch (e) {
+      console.log('[UPLOAD] Store Try-On: upload error', { endpoint, error: e });
+      Alert.alert('Upload Failed', 'Connection error');
     }
+    setIsUploading(false);
   };
 
   const handleGenerate = async () => {
-    if (!fileId || !productId) return;
+    if (!sessionId || !productId) return;
+    const endpoint = `${API_URL}/api/store/try-on`;
+    console.log('[GENERATION] Store Try-On: generation started', { endpoint, productId, sessionId });
     setIsGenerating(true);
     try {
       const response = await apiFetch('/api/store/try-on', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          file_id: fileId,
           product_id: parseInt(productId),
-          body_type: bodyType,
+          session_id: sessionId,
+          store_id: storeId ? parseInt(storeId) : undefined,
         }),
       });
+      console.log('[GENERATION] Store Try-On: response received', { status: response.status, ok: response.ok });
       if (response.ok) {
         const data = await response.json();
-        if (data.file_id) {
-          setResultImageUrl(`${API_URL}/api/store/result-image/${data.file_id}`);
+        if (data.output_file_id) {
+          console.log('[GENERATION] Store Try-On: generation completed', { outputFileId: data.output_file_id });
+          setResultImageUrl(`${API_URL}/api/store/download/${data.output_file_id}`);
         }
       } else {
-        Alert.alert('Error', 'Generation failed');
+        const err = await response.json().catch(() => null);
+        console.log('[GENERATION] Store Try-On: generation failed', { endpoint, status: response.status, err });
+        Alert.alert('Error', err?.detail || 'Generation failed');
       }
-    } catch {
+    } catch (e) {
+      console.log('[GENERATION] Store Try-On: generation error', { endpoint, error: e });
       Alert.alert('Error', 'Connection failed');
     }
     setIsGenerating(false);
@@ -143,6 +172,7 @@ export default function StoreTryOnScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <GeneratingOverlay visible={isGenerating} />
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
         {/* Header */}
         <View style={styles.header}>
@@ -211,10 +241,10 @@ export default function StoreTryOnScreen() {
         <Animated.View entering={FadeInDown.delay(300)}>
           <Pressable
             onPress={handleGenerate}
-            disabled={isGenerating || !fileId}
-            style={[styles.generateButton, (!fileId || isGenerating) && { opacity: 0.5 }]}>
+            disabled={isGenerating || !sessionId}
+            style={[styles.generateButton, (!sessionId || isGenerating) && { opacity: 0.5 }]}>
             <LinearGradient
-              colors={fileId ? ['#c9a96e', '#e8c98a'] : ['#d1d5db', '#e5e7eb']}
+              colors={sessionId ? ['#c9a96e', '#e8c98a'] : ['#d1d5db', '#e5e7eb']}
               style={styles.generateGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}>

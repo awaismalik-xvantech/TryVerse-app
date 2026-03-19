@@ -45,7 +45,11 @@ export default function SignupScreen() {
     const result = await signup(email.trim(), password, fullName.trim());
     setIsLoading(false);
     if (result.ok) {
-      router.replace('/(tabs)');
+      Alert.alert(
+        'Check Your Email',
+        'We sent a verification link to your email. Please verify your account, then come back and sign in.',
+        [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
+      );
     } else {
       Alert.alert('Signup Failed', result.error || 'Could not create account');
     }

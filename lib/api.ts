@@ -39,6 +39,8 @@ export async function apiFetch(
   options: RequestInit = {},
 ): Promise<Response> {
   const token = await getToken();
+  const url = `${API_URL}${path}`;
+  const method = options.method || 'GET';
 
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
@@ -48,10 +50,14 @@ export async function apiFetch(
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}${path}`, {
+  console.log(`[API] ${method} ${url}`);
+
+  const response = await fetch(url, {
     ...options,
     headers,
   });
+
+  console.log(`[API] ${method} ${url} -> status ${response.status}`);
 
   if (response.status === 401) {
     await clearSession();
@@ -64,12 +70,15 @@ export async function apiPost<T = unknown>(
   path: string,
   data: unknown,
 ): Promise<{ ok: boolean; data?: T; error?: string; status: number }> {
+  const url = `${API_URL}${path}`;
   try {
     const response = await apiFetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(data),
     });
+
+    console.log(`[API] POST ${url} -> status ${response.status}`);
 
     if (response.ok) {
       const responseData = await response.json();
@@ -92,12 +101,16 @@ export async function apiPost<T = unknown>(
 export async function apiGet<T = unknown>(
   path: string,
 ): Promise<{ ok: boolean; data?: T; error?: string; status: number }> {
+  const url = `${API_URL}${path}`;
   try {
     const response = await apiFetch(path);
     if (response.ok) {
       const responseData = await response.json();
+      const dataLength = Array.isArray(responseData) ? responseData.length : (typeof responseData === 'object' ? Object.keys(responseData).length : 0);
+      console.log(`[API] GET ${url} -> status ${response.status}, data length: ${dataLength}`);
       return { ok: true, data: responseData as T, status: response.status };
     } else {
+      console.log(`[API] GET ${url} -> status ${response.status} (error)`);
       let errorDetail = `Error ${response.status}`;
       try {
         const errData = await response.json();
@@ -139,11 +152,16 @@ export async function apiUpload(
     const headers: Record<string, string> = {};
     if (token) headers['Authorization'] = `Bearer ${token}`;
 
-    const response = await fetch(`${API_URL}${path}`, {
+    const url = `${API_URL}${path}`;
+    console.log(`[UPLOAD] POST ${url} file: ${filename}`);
+
+    const response = await fetch(url, {
       method: 'POST',
       headers,
       body: formData,
     });
+
+    console.log(`[UPLOAD] POST ${url} -> status ${response.status}`);
 
     if (response.ok) {
       const data = await response.json();

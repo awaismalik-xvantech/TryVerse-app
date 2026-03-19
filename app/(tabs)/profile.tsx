@@ -191,13 +191,13 @@ export default function ProfileScreen() {
             icon="time-outline"
             label="Try-On History"
             desc="Your past generations"
-            onPress={() => {}}
+            onPress={() => Alert.alert('Coming Soon', 'Try-On History will be available in a future update.')}
           />
           <MenuItem
             icon="card-outline"
             label="Subscription"
             desc={user?.is_pro ? 'Pro Plan' : 'Free Plan'}
-            onPress={() => {}}
+            onPress={() => Alert.alert('Subscription', user?.is_pro ? 'You are on the Pro Plan with unlimited try-ons and HD quality.' : 'Upgrade to Pro for unlimited try-ons, HD quality, and exclusive features.')}
           />
         </Animated.View>
 
@@ -208,19 +208,25 @@ export default function ProfileScreen() {
             icon="notifications-outline"
             label="Notifications"
             desc="Push notification settings"
-            onPress={() => {}}
+            onPress={() => Alert.alert('Coming Soon', 'Notification settings will be available in a future update.')}
           />
           <MenuItem
             icon="shield-outline"
             label="Privacy"
             desc="Data & privacy settings"
-            onPress={() => {}}
+            onPress={() => router.push('/privacy-policy')}
           />
           <MenuItem
             icon="help-circle-outline"
             label="Help & Support"
             desc="FAQ and contact us"
-            onPress={() => {}}
+            onPress={() => router.push('/contact-us')}
+          />
+          <MenuItem
+            icon="information-circle-outline"
+            label="About"
+            desc="App info and version"
+            onPress={() => router.push('/about')}
           />
         </Animated.View>
 

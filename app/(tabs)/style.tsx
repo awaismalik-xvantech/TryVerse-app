@@ -19,32 +19,33 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { apiUpload, apiFetch, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 
 const { width } = Dimensions.get('window');
 
 type Tab = 'stylist' | 'poses';
 
 const poses = [
-  { slug: 'confident-standing', name: 'Confident Standing', img: require('@/assets/images/poses/confident-standing.jpg') },
-  { slug: 'executive-walk', name: 'Executive Walk', img: require('@/assets/images/poses/executive-walk.jpg') },
-  { slug: 'business-portrait', name: 'Business Portrait', img: require('@/assets/images/poses/business-portrait.jpg') },
-  { slug: 'over-the-shoulder', name: 'Over the Shoulder', img: require('@/assets/images/poses/over-the-shoulder.jpg') },
-  { slug: 'casual-lean', name: 'Casual Lean', img: require('@/assets/images/poses/casual-lean.jpg') },
-  { slug: 'relaxed-seated', name: 'Relaxed Seated', img: require('@/assets/images/poses/relaxed-seated.jpg') },
-  { slug: 'hands-in-pockets', name: 'Hands in Pockets', img: require('@/assets/images/poses/hands-in-pockets.jpg') },
-  { slug: 'street-stroll', name: 'Street Stroll', img: require('@/assets/images/poses/street-stroll.jpg') },
-  { slug: 'window-gaze', name: 'Window Gaze', img: require('@/assets/images/poses/window-gaze.jpg') },
-  { slug: 'model-turn', name: 'Model Turn', img: require('@/assets/images/poses/model-turn.jpg') },
-  { slug: 'dramatic-profile', name: 'Dramatic Profile', img: require('@/assets/images/poses/dramatic-profile.jpg') },
-  { slug: 'floor-pose', name: 'Floor Pose', img: require('@/assets/images/poses/floor-pose.jpg') },
-  { slug: 'coffee-shop', name: 'Coffee Shop', img: require('@/assets/images/poses/coffee-shop.jpg') },
-  { slug: 'urban-background', name: 'Urban Background', img: require('@/assets/images/poses/urban-background.jpg') },
-  { slug: 'sunlight-portrait', name: 'Sunlight Portrait', img: require('@/assets/images/poses/sunlight-portrait.jpg') },
-  { slug: 'action-stride', name: 'Action Stride', img: require('@/assets/images/poses/action-stride.jpg') },
-  { slug: 'wind-blown', name: 'Wind Blown', img: require('@/assets/images/poses/wind-blown.jpg') },
-  { slug: 'staircase-pose', name: 'Staircase Pose', img: require('@/assets/images/poses/staircase-pose.jpg') },
-  { slug: 'jump-shot', name: 'Jump Shot', img: require('@/assets/images/poses/jump-shot.jpg') },
-  { slug: 'dance-move', name: 'Dance Move', img: require('@/assets/images/poses/dance-move.jpg') },
+  { slug: 'confident-standing', name: 'Confident Standing', prompt: 'Confident standing pose, weight on one hip, shoulders back, professional fashion photography', img: require('@/assets/images/poses/confident-standing.jpg') },
+  { slug: 'executive-walk', name: 'Executive Walk', prompt: 'Walking confidently mid-stride, one leg forward, arms swinging naturally, executive fashion photography', img: require('@/assets/images/poses/executive-walk.jpg') },
+  { slug: 'business-portrait', name: 'Business Portrait', prompt: 'Professional business portrait, slight head tilt, direct eye contact, upper body composition', img: require('@/assets/images/poses/business-portrait.jpg') },
+  { slug: 'over-the-shoulder', name: 'Over the Shoulder', prompt: 'Looking over the shoulder, body turned 45 degrees from camera, head turned back towards lens', img: require('@/assets/images/poses/over-the-shoulder.jpg') },
+  { slug: 'casual-lean', name: 'Casual Lean', prompt: 'Casually leaning against a wall, one foot up, arms relaxed, natural effortless vibe', img: require('@/assets/images/poses/casual-lean.jpg') },
+  { slug: 'relaxed-seated', name: 'Relaxed Seated', prompt: 'Seated on a chair or bench, one leg crossed, relaxed sophisticated look', img: require('@/assets/images/poses/relaxed-seated.jpg') },
+  { slug: 'hands-in-pockets', name: 'Hands in Pockets', prompt: 'Hands in pockets, relaxed confident stance, slight head tilt, casual cool fashion look', img: require('@/assets/images/poses/hands-in-pockets.jpg') },
+  { slug: 'street-stroll', name: 'Street Stroll', prompt: 'Walking on a city street, natural stride, looking slightly away from camera, street style fashion', img: require('@/assets/images/poses/street-stroll.jpg') },
+  { slug: 'window-gaze', name: 'Window Gaze', prompt: 'Standing by a window gazing out, soft natural light illuminating face, contemplative elegant pose', img: require('@/assets/images/poses/window-gaze.jpg') },
+  { slug: 'model-turn', name: 'Model Turn', prompt: 'Fashion model turn pose, body at 3/4 angle, head facing camera, runway-style confidence', img: require('@/assets/images/poses/model-turn.jpg') },
+  { slug: 'dramatic-profile', name: 'Dramatic Profile', prompt: 'Dramatic side profile shot, strong jawline visible, moody artistic fashion photography', img: require('@/assets/images/poses/dramatic-profile.jpg') },
+  { slug: 'floor-pose', name: 'Floor Pose', prompt: 'Seated on the floor, legs extended, leaning on one arm, editorial fashion photography', img: require('@/assets/images/poses/floor-pose.jpg') },
+  { slug: 'coffee-shop', name: 'Coffee Shop', prompt: 'Sitting in a coffee shop, holding a cup, warm ambient lighting, lifestyle fashion photography', img: require('@/assets/images/poses/coffee-shop.jpg') },
+  { slug: 'urban-background', name: 'Urban Background', prompt: 'Standing against urban graffiti wall background, streetwear fashion, edgy confident pose', img: require('@/assets/images/poses/urban-background.jpg') },
+  { slug: 'sunlight-portrait', name: 'Sunlight Portrait', prompt: 'Golden hour sunlight portrait, warm tones, soft backlighting, natural beauty fashion photo', img: require('@/assets/images/poses/sunlight-portrait.jpg') },
+  { slug: 'action-stride', name: 'Action Stride', prompt: 'Dynamic walking action shot, coat or hair flowing with movement, energetic confident stride', img: require('@/assets/images/poses/action-stride.jpg') },
+  { slug: 'wind-blown', name: 'Wind Blown', prompt: 'Wind-blown hair and clothes, natural movement, outdoor fashion photography, dynamic energy', img: require('@/assets/images/poses/wind-blown.jpg') },
+  { slug: 'staircase-pose', name: 'Staircase Pose', prompt: 'Posed on a staircase, one step higher, looking down at camera, elegant architectural setting', img: require('@/assets/images/poses/staircase-pose.jpg') },
+  { slug: 'jump-shot', name: 'Jump Shot', prompt: 'Mid-air jump shot, arms and legs dynamic, joyful energetic expression, fashion photography', img: require('@/assets/images/poses/jump-shot.jpg') },
+  { slug: 'dance-move', name: 'Dance Move', prompt: 'Dynamic dance pose, one arm extended, body in elegant motion, artistic fashion photography', img: require('@/assets/images/poses/dance-move.jpg') },
 ];
 
 const POSE_SIZE = (width - Spacing.xl * 2 - Spacing.md * 2) / 3;
@@ -54,10 +55,37 @@ export default function StyleScreen() {
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
   const [isSending, setIsSending] = useState(false);
+  const [conversationId, setConversationId] = useState<number | null>(null);
   const [selectedPose, setSelectedPose] = useState<string | null>(null);
   const [posePhotoUri, setPosePhotoUri] = useState<string | null>(null);
   const [poseResult, setPoseResult] = useState<string | null>(null);
   const [isGeneratingPose, setIsGeneratingPose] = useState(false);
+
+  const ensureConversation = async (): Promise<number | null> => {
+    if (conversationId) return conversationId;
+    console.log('[STYLIST] Creating conversation: trying start-from-tryon');
+    try {
+      const response = await apiFetch('/api/stylist/start-from-tryon', { method: 'POST' });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('[STYLIST] Conversation created via start-from-tryon', { id: data.id });
+        setConversationId(data.id);
+        return data.id;
+      }
+      console.log('[STYLIST] start-from-tryon failed, trying upload-photo');
+      const uploadRes = await apiFetch('/api/stylist/upload-photo', { method: 'POST' });
+      if (uploadRes.ok) {
+        const data = await uploadRes.json();
+        console.log('[STYLIST] Conversation created via upload-photo', { id: data.id });
+        setConversationId(data.id);
+        return data.id;
+      }
+      console.log('[STYLIST] No conversation created', { startStatus: response.status, uploadStatus: uploadRes.status });
+    } catch (e) {
+      console.log('[STYLIST] ensureConversation error', e);
+    }
+    return null;
+  };
 
   const sendMessage = async () => {
     if (!chatInput.trim() || isSending) return;
@@ -67,18 +95,33 @@ export default function StyleScreen() {
     setIsSending(true);
 
     try {
+      const convId = await ensureConversation();
+      if (!convId) {
+        const noConvMessage = 'To use the AI Stylist, first upload a selfie in the Virtual Try-On tab. Your photo helps me give personalized style advice!';
+        console.log('[STYLIST] No conversation available, showing message to user');
+        setMessages((prev) => [...prev, { role: 'ai', text: noConvMessage }]);
+        setIsSending(false);
+        return;
+      }
+
+      console.log('[STYLIST] Sending message', { conversationId: convId, message: userMsg });
       const response = await apiFetch('/api/stylist/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMsg }),
+        body: JSON.stringify({ conversation_id: convId, message: userMsg }),
       });
       if (response.ok) {
         const data = await response.json();
-        setMessages((prev) => [...prev, { role: 'ai', text: data.response || data.message || 'No response' }]);
+        const botText = data.bot_message?.content || data.response || data.message || 'No response';
+        console.log('[STYLIST] Response received', { hasBotMessage: !!data.bot_message });
+        setMessages((prev) => [...prev, { role: 'ai', text: botText }]);
       } else {
-        setMessages((prev) => [...prev, { role: 'ai', text: 'Sorry, I could not process that.' }]);
+        const err = await response.json().catch(() => null);
+        console.log('[STYLIST] Chat error', { status: response.status, err });
+        setMessages((prev) => [...prev, { role: 'ai', text: err?.detail || 'Sorry, I could not process that.' }]);
       }
-    } catch {
+    } catch (e) {
+      console.log('[STYLIST] Chat connection error', e);
       setMessages((prev) => [...prev, { role: 'ai', text: 'Connection error. Please try again.' }]);
     }
     setIsSending(false);
@@ -102,19 +145,33 @@ export default function StyleScreen() {
       Alert.alert('Missing', 'Please select a photo and a pose.');
       return;
     }
+    const endpoint = `${API_URL}/api/pose/generate`;
+    console.log('[POSE] Generation started', { endpoint, selectedPose });
     setIsGeneratingPose(true);
-    const res = await apiUpload('/api/pose/generate', posePhotoUri, 'file', { pose: selectedPose });
+    const selected = poses.find((p) => p.slug === selectedPose);
+    const prompt1 = selected?.prompt || `${selected?.name || selectedPose} fashion photography pose`;
+    const secondPose = poses.find((p) => p.slug !== selectedPose);
+    const prompt2 = secondPose?.prompt || 'Professional fashion portrait with confident posture';
+    const posesJson = JSON.stringify([prompt1, prompt2]);
+    const res = await apiUpload('/api/pose/generate', posePhotoUri, 'file', { poses: posesJson });
     setIsGeneratingPose(false);
+    console.log('[POSE] Generation response', { ok: res.ok, status: res.status, hasData: !!res.data });
     if (res.ok && res.data) {
-      const data = res.data as { file_id?: string };
-      if (data.file_id) setPoseResult(`${API_URL}/api/pose/image/${data.file_id}`);
+      const data = res.data as { generated_image_urls?: string[] };
+      if (data.generated_image_urls && data.generated_image_urls.length > 0) {
+        const url = data.generated_image_urls[0];
+        setPoseResult(url.startsWith('http') ? url : `${API_URL}${url}`);
+        console.log('[POSE] Generation completed', { resultCount: data.generated_image_urls.length });
+      }
     } else {
+      console.log('[POSE] Generation failed', { endpoint, error: res.error });
       Alert.alert('Error', (res.error as string) || 'Generation failed');
     }
   };
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
+      <GeneratingOverlay visible={isGeneratingPose} message="Transforming your pose..." />
       {/* Header */}
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Style</Text>

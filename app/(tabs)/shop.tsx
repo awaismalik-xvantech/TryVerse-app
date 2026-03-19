@@ -10,8 +10,10 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
+  ImageBackground,
 } from 'react-native';
 import { useRouter } from 'expo-router';
+import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
@@ -51,16 +53,36 @@ export default function ShopScreen() {
   const [gender, setGender] = useState<'all' | 'men' | 'women'>('all');
 
   const loadData = async () => {
-    const storeRes = await apiGet<Store[]>('/api/store/stores');
-    if (storeRes.ok && storeRes.data) setStores(storeRes.data);
+    console.log('[SHOP] Loading store data...');
+    const storeRes = await apiGet<Store[]>('/api/store/brands');
+    const brandList = storeRes.ok && storeRes.data ? storeRes.data : [];
+    console.log('[SHOP] Brands loaded:', brandList.length);
+    setStores(brandList);
 
-    let url = '/api/store/products?page=1&per_page=50';
-    if (selectedStore) url += `&store_id=${selectedStore}`;
-    if (gender !== 'all') url += `&gender=${gender}`;
-    if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+    let allProducts: Product[] = [];
 
-    const prodRes = await apiGet<{ products: Product[] }>(url);
-    if (prodRes.ok && prodRes.data) setProducts(prodRes.data.products || []);
+    if (selectedStore) {
+      let url = `/api/store/brands/${selectedStore}/products?limit=50&offset=0`;
+      if (gender !== 'all') url += `&gender=${gender}`;
+      if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+      console.log('[SHOP] Fetching products for store:', selectedStore);
+      const prodRes = await apiGet<Product[]>(url);
+      if (prodRes.ok && prodRes.data) allProducts = prodRes.data;
+    } else if (brandList.length > 0) {
+      console.log('[SHOP] Fetching products from all stores...');
+      const fetches = brandList.map(async (store) => {
+        let url = `/api/store/brands/${store.id}/products?limit=20`;
+        if (gender !== 'all') url += `&gender=${gender}`;
+        if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+        const res = await apiGet<Product[]>(url);
+        return res.ok && res.data ? res.data : [];
+      });
+      const results = await Promise.all(fetches);
+      allProducts = results.flat();
+    }
+
+    console.log('[SHOP] Total products loaded:', allProducts.length);
+    setProducts(allProducts);
     setLoading(false);
     setRefreshing(false);
   };
@@ -83,7 +105,7 @@ export default function ShopScreen() {
   };
 
   const renderProduct = ({ item, index }: { item: Product; index: number }) => (
-    <Animated.View entering={FadeInDown.delay(index * 50)}>
+    <Animated.View entering={FadeInDown.delay(Math.min(index * 50, 400))}>
       <Pressable
         onPress={() => router.push(`/store-tryon?product=${item.id}&store=${item.store_id || ''}`)}
         style={styles.productCard}>
@@ -96,9 +118,15 @@ export default function ShopScreen() {
             <Text style={styles.productBrand} numberOfLines={1}>{item.store_name}</Text>
           )}
           <Text style={styles.productName} numberOfLines={2}>{item.name}</Text>
-          {item.price && (
-            <Text style={styles.productPrice}>{item.price}</Text>
-          )}
+          <View style={styles.productBottom}>
+            {item.price ? (
+              <Text style={styles.productPrice}>{item.price}</Text>
+            ) : <View />}
+            <View style={styles.tryOnBadge}>
+              <Ionicons name="shirt-outline" size={12} color={Colors.light.gold} />
+              <Text style={styles.tryOnBadgeText}>Try On</Text>
+            </View>
+          </View>
         </View>
       </Pressable>
     </Animated.View>
@@ -106,9 +134,17 @@ export default function ShopScreen() {
 
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
-      {/* Header */}
+      {/* Header with gradient */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Fashion Store</Text>
+        <View style={styles.headerContent}>
+          <View>
+            <Text style={styles.headerTitle}>Fashion Store</Text>
+            <Text style={styles.headerSub}>{products.length} products from {stores.length} brands</Text>
+          </View>
+          <View style={styles.headerBadge}>
+            <Ionicons name="storefront" size={20} color={Colors.light.gold} />
+          </View>
+        </View>
       </View>
 
       {/* Search */}
@@ -211,7 +247,21 @@ const styles = StyleSheet.create({
     paddingTop: Spacing.sm,
     paddingBottom: Spacing.md,
   },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
   headerTitle: { fontSize: FontSize.xl, fontWeight: '800', color: Colors.light.charcoal },
+  headerSub: { fontSize: FontSize.xs, color: Colors.light.textSecondary, marginTop: 2 },
+  headerBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: Colors.light.gold + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   searchContainer: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -274,7 +324,23 @@ const styles = StyleSheet.create({
   productInfo: { padding: Spacing.sm },
   productBrand: { fontSize: FontSize.xs, color: Colors.light.gold, fontWeight: '600', marginBottom: 2 },
   productName: { fontSize: FontSize.sm, color: Colors.light.charcoal, fontWeight: '500', lineHeight: 18 },
-  productPrice: { fontSize: FontSize.sm, color: Colors.light.charcoal, fontWeight: '700', marginTop: 4 },
+  productBottom: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 6,
+  },
+  productPrice: { fontSize: FontSize.sm, color: Colors.light.charcoal, fontWeight: '700' },
+  tryOnBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: Colors.light.gold + '15',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: BorderRadius.sm,
+  },
+  tryOnBadgeText: { fontSize: 9, fontWeight: '700', color: Colors.light.gold },
   emptyContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', paddingTop: 80 },
   emptyText: { fontSize: FontSize.base, color: Colors.light.textMuted, marginTop: Spacing.md },
 });
