@@ -17,6 +17,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Logo } from '@/components/Logo';
 import { useAuth } from '@/lib/auth';
 
 export default function LoginScreen() {
@@ -59,14 +60,7 @@ export default function LoginScreen() {
         showsVerticalScrollIndicator={false}>
         {/* Logo area */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.logoArea}>
-          <LinearGradient
-            colors={['#c9a96e', '#e8c98a']}
-            style={styles.logoCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}>
-            <Ionicons name="diamond" size={36} color="#fff" />
-          </LinearGradient>
-          <Text style={styles.brandName}>TryVerse</Text>
+          <Logo size="lg" />
           <Text style={styles.tagline}>Try It Before You Buy It</Text>
         </Animated.View>
 
@@ -171,37 +165,18 @@ const styles = StyleSheet.create({
   },
   bgOverlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(255,255,255,0.5)',
+    backgroundColor: 'rgba(255,255,255,0.85)',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingTop: 80,
-    paddingBottom: 40,
+    paddingTop: 50,
+    paddingBottom: 32,
   },
   logoArea: {
     alignItems: 'center',
-    marginBottom: Spacing['3xl'],
-  },
-  logoCircle: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.base,
-    shadowColor: '#c9a96e',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 12,
-    elevation: 6,
-  },
-  brandName: {
-    fontSize: FontSize['3xl'],
-    fontWeight: '800',
-    color: Colors.light.charcoal,
-    letterSpacing: -0.5,
+    marginBottom: Spacing.xl,
   },
   tagline: {
     fontSize: FontSize.sm,
@@ -209,7 +184,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.xs,
   },
   form: {
-    gap: Spacing.base,
+    gap: Spacing.sm,
   },
   inputContainer: {
     flexDirection: 'row',
@@ -263,7 +238,7 @@ const styles = StyleSheet.create({
   dividerRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginVertical: Spacing.xl,
+    marginVertical: Spacing.base,
   },
   dividerLine: {
     flex: 1,
@@ -293,11 +268,14 @@ const styles = StyleSheet.create({
   signupRow: {
     flexDirection: 'row',
     justifyContent: 'center',
-    marginTop: Spacing['2xl'],
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginTop: Spacing.lg,
   },
   signupText: {
     fontSize: FontSize.base,
-    color: Colors.light.textSecondary,
+    color: Colors.light.charcoal,
+    fontWeight: '500',
   },
   signupLink: {
     fontSize: FontSize.base,
@@ -309,11 +287,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: Spacing.xs,
-    marginTop: Spacing['2xl'],
-    marginBottom: Spacing.xl,
+    marginTop: Spacing.base,
+    marginBottom: Spacing.lg,
   },
   privacyText: {
-    fontSize: FontSize.xs,
-    color: Colors.light.textMuted,
+    fontSize: FontSize.sm,
+    color: Colors.light.textSecondary,
+    fontWeight: '600',
   },
 });

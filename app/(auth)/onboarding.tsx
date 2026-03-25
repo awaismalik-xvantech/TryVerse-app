@@ -14,6 +14,7 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Logo } from '@/components/Logo';
 
 const { width, height } = Dimensions.get('window');
 
@@ -97,16 +98,7 @@ export default function OnboardingScreen() {
     <View style={[styles.slide, { width }]}>
       {/* Logo area at very top */}
       <View style={styles.logoArea}>
-        <View style={styles.logoRow}>
-          <LinearGradient
-            colors={['#c9a96e', '#e8c98a']}
-            style={styles.diamondCircle}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}>
-            <Ionicons name="diamond" size={22} color="#fff" />
-          </LinearGradient>
-          <Text style={styles.brandName}>TryVerse</Text>
-        </View>
+        <Logo size="lg" light />
         <Text style={styles.slogan}>Try It Before You Buy It</Text>
       </View>
 
@@ -209,24 +201,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.xl,
     paddingBottom: Spacing.lg,
     alignItems: 'center',
-  },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.sm,
-  },
-  diamondCircle: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandName: {
-    fontSize: FontSize.xl,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: -0.5,
   },
   slogan: {
     fontSize: FontSize.sm,

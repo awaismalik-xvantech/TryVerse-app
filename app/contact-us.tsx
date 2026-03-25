@@ -64,10 +64,10 @@ export default function ContactUsScreen() {
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.contactLabel}>Email Us</Text>
-            <Text style={styles.contactValue}>support@tryverse.app</Text>
+            <Text style={styles.contactValue}>hello@tryverse.app</Text>
           </View>
           <Pressable
-            onPress={() => Linking.openURL('mailto:support@tryverse.app?subject=TryVerse App Support')}
+            onPress={() => Linking.openURL('mailto:hello@tryverse.app?subject=TryVerse App Support')}
             style={styles.contactBtn}>
             <Text style={styles.contactBtnText}>Send Email</Text>
           </Pressable>

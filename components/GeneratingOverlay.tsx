@@ -17,27 +17,56 @@ const PROGRESS_MESSAGES = [
   'Analyzing your photo...',
   'Finding the perfect fit...',
   'AI is working its magic...',
+  'Tip: You can try different poses for better results',
   'Almost there...',
+  'Tip: Full body photos work best for try-ons',
   'Finalizing your look...',
+  'Tip: Good lighting helps AI generate better results',
+  'Putting finishing touches...',
+  'Tip: Try products from different stores for variety',
+  'Just a few more seconds...',
+  'Tip: Save your favorites to gallery after generation',
 ];
+
+const PROGRESS_BAR_WIDTH = width * 0.7;
 
 interface GeneratingOverlayProps {
   visible: boolean;
   message?: string;
+  onComplete?: () => void;
 }
 
-export function GeneratingOverlay({ visible, message }: GeneratingOverlayProps) {
+export function GeneratingOverlay({ visible, message, onComplete }: GeneratingOverlayProps) {
   const spinValue = useRef(new Animated.Value(0)).current;
   const pulseValue = useRef(new Animated.Value(1)).current;
+  const progressValue = useRef(new Animated.Value(0)).current;
   const [messageIndex, setMessageIndex] = useState(0);
 
   useEffect(() => {
     if (!visible || message) return;
     const interval = setInterval(() => {
       setMessageIndex((i) => (i + 1) % PROGRESS_MESSAGES.length);
-    }, 3000);
+    }, 4000);
     return () => clearInterval(interval);
   }, [visible, message]);
+
+  useEffect(() => {
+    if (!visible) {
+      progressValue.setValue(0);
+      return;
+    }
+    progressValue.setValue(0);
+    const anim = Animated.timing(progressValue, {
+      toValue: 1,
+      duration: 25000,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    });
+    anim.start(({ finished }) => {
+      if (finished) onComplete?.();
+    });
+    return () => anim.stop();
+  }, [visible, progressValue, onComplete]);
 
   useEffect(() => {
     if (!visible) return;
@@ -104,6 +133,20 @@ export function GeneratingOverlay({ visible, message }: GeneratingOverlayProps) 
           <Text style={styles.privacyNote}>
             Your photos are processed securely and never saved
           </Text>
+
+          <View style={styles.progressTrack}>
+            <Animated.View
+              style={[
+                styles.progressFill,
+                {
+                  width: progressValue.interpolate({
+                    inputRange: [0, 1],
+                    outputRange: [0, PROGRESS_BAR_WIDTH],
+                  }),
+                },
+              ]}
+            />
+          </View>
         </View>
       </LinearGradient>
     </Modal>
@@ -157,5 +200,18 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: 'rgba(255,255,255,0.5)',
     textAlign: 'center',
+  },
+  progressTrack: {
+    marginTop: 24,
+    width: PROGRESS_BAR_WIDTH,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    overflow: 'hidden',
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: '#c9a96e',
+    borderRadius: 2,
   },
 });

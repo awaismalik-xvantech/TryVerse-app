@@ -1,4 +1,3 @@
-import { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -14,6 +13,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius, Gradients } from '@/constants/theme';
+import { Logo } from '@/components/Logo';
 import { useAuth } from '@/lib/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -87,16 +87,7 @@ export default function HomeScreen() {
         {/* Header with logo */}
         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
           <View style={styles.headerLeft}>
-            <View style={styles.logoRow}>
-              <LinearGradient
-                colors={['#c9a96e', '#e8c98a']}
-                style={styles.logoCircle}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}>
-                <Ionicons name="diamond" size={16} color="#fff" />
-              </LinearGradient>
-              <Text style={styles.brandName}>TryVerse</Text>
-            </View>
+            <Logo size="sm" />
             <Text style={styles.greeting}>{getGreeting()}, <Text style={styles.userName}>{firstName}</Text></Text>
           </View>
           <Pressable
@@ -123,7 +114,7 @@ export default function HomeScreen() {
               style={styles.heroOverlay}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}>
-              <Ionicons name="diamond" size={28} color="#e8c98a" />
+              <Logo size="md" light />
               <Text style={styles.heroSlogan}>Try It Before You Buy It</Text>
               <Text style={styles.heroSub}>AI-powered virtual try-on for every outfit</Text>
               <View style={styles.heroPrivacy}>
@@ -144,7 +135,7 @@ export default function HomeScreen() {
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}>
                 <View style={styles.proBannerContent}>
-                  <Ionicons name="diamond" size={24} color="#e8c98a" />
+                  <Logo size="sm" light showText={false} />
                   <View style={styles.proBannerText}>
                     <Text style={styles.proBannerTitle}>Upgrade to Pro</Text>
                     <Text style={styles.proBannerDesc}>Unlimited try-ons, no watermarks</Text>
@@ -263,25 +254,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.base,
   },
   headerLeft: {},
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 4,
-  },
-  logoCircle: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  brandName: {
-    fontSize: FontSize.md,
-    fontWeight: '800',
-    color: Colors.light.charcoal,
-    letterSpacing: -0.3,
-  },
   greeting: { fontSize: FontSize.sm, color: Colors.light.textSecondary, fontWeight: '500' },
   userName: { fontWeight: '800', color: Colors.light.charcoal },
   avatarButton: {},

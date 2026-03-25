@@ -5,6 +5,12 @@ const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8000';
 const TOKEN_KEY = 'access_token';
 const USER_KEY = 'user_data';
 
+let _onSessionExpired: (() => void) | null = null;
+
+export function setOnSessionExpired(cb: (() => void) | null): void {
+  _onSessionExpired = cb;
+}
+
 export async function getToken(): Promise<string | null> {
   return SecureStore.getItemAsync(TOKEN_KEY);
 }
@@ -61,6 +67,7 @@ export async function apiFetch(
 
   if (response.status === 401) {
     await clearSession();
+    _onSessionExpired?.();
   }
 
   return response;
@@ -162,6 +169,11 @@ export async function apiUpload(
     });
 
     console.log(`[UPLOAD] POST ${url} -> status ${response.status}`);
+
+    if (response.status === 401) {
+      await clearSession();
+      _onSessionExpired?.();
+    }
 
     if (response.ok) {
       const data = await response.json();

@@ -8,19 +8,17 @@ import {
   Image,
   ActivityIndicator,
   Alert,
-  Dimensions,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated';
+import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { apiGet, apiFetch, getToken, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
-
-const { width } = Dimensions.get('window');
+import { ImageResult } from '@/components/ImageResult';
 
 interface Product {
   id: number;
@@ -144,6 +142,10 @@ export default function StoreTryOnScreen() {
         if (data.output_file_id) {
           console.log('[GENERATION] Store Try-On: generation completed', { outputFileId: data.output_file_id });
           setResultImageUrl(`${API_URL}/api/store/download/${data.output_file_id}`);
+          Alert.alert(
+            'Image Ready!',
+            'Your store try-on image has been generated. Save it to your gallery before leaving.'
+          );
         }
       } else {
         const err = await response.json().catch(() => null);
@@ -265,10 +267,7 @@ export default function StoreTryOnScreen() {
 
         {/* Result */}
         {resultImageUrl && (
-          <Animated.View entering={FadeIn.duration(500)} style={styles.resultSection}>
-            <Text style={styles.resultTitle}>Your Try-On</Text>
-            <Image source={{ uri: resultImageUrl }} style={styles.resultImage} />
-          </Animated.View>
+          <ImageResult imageUrl={resultImageUrl} title="Your Store Try-On" />
         )}
 
         <View style={{ height: 40 }} />
@@ -352,13 +351,4 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.base,
   },
   generateText: { fontSize: FontSize.md, fontWeight: '700', color: '#1a1a2e' },
-  resultSection: { marginTop: Spacing.xl },
-  resultTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.light.charcoal, marginBottom: Spacing.md },
-  resultImage: {
-    width: '100%',
-    height: width - Spacing.xl * 2,
-    borderRadius: BorderRadius.xl,
-    resizeMode: 'cover',
-    backgroundColor: Colors.light.surfaceSecondary,
-  },
 });

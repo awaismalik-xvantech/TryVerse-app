@@ -5,12 +5,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Logo } from '@/components/Logo';
 
 const FEATURES = [
   { icon: 'shirt-outline' as const, label: 'Virtual Try-On' },
-  { icon: 'sparkles-outline' as const, label: 'AI-Powered' },
+  { icon: 'sparkles-outline' as const, label: 'AI Styling' },
   { icon: 'shield-checkmark-outline' as const, label: 'Privacy First' },
-  { icon: 'diamond-outline' as const, label: 'Pro Quality' },
+  { icon: 'diamond-outline' as const, label: 'Quality Results' },
 ];
 
 export default function AboutScreen() {
@@ -29,10 +30,7 @@ export default function AboutScreen() {
             style={styles.headerGradient}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 1 }}>
-            <View style={styles.headerIconBg}>
-              <Ionicons name="diamond" size={48} color={Colors.light.charcoal} />
-            </View>
-            <Text style={styles.appName}>TryVerse</Text>
+            <Logo size="lg" />
             <Text style={styles.slogan}>Try It Before You Buy It</Text>
             <View style={styles.versionBadge}>
               <Text style={styles.versionText}>v1.0.0</Text>
@@ -42,8 +40,8 @@ export default function AboutScreen() {
 
         <Animated.View entering={FadeInDown.delay(150)} style={styles.descriptionCard}>
           <Text style={styles.description}>
-            TryVerse is your AI-powered virtual try-on platform. See how clothes look on you before
-            you buy—no photos stored, no data sold. Just instant, private try-ons.
+            TryVerse is an AI-powered virtual try-on platform. See how clothes look on you before you
+            buy. Your photos are processed securely and never stored on our servers.
           </Text>
         </Animated.View>
 
@@ -93,21 +91,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.xl,
     overflow: 'hidden',
-  },
-  headerIconBg: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.light.charcoal + '25',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: Spacing.base,
-  },
-  appName: {
-    fontSize: FontSize['3xl'],
-    fontWeight: '800',
-    color: Colors.light.charcoal,
-    marginBottom: Spacing.xs,
   },
   slogan: {
     fontSize: FontSize.md,

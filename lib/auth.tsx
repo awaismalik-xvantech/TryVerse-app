@@ -1,5 +1,14 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
-import { getToken, getUser, setToken, setUser, clearSession, apiPost, apiFetch } from './api';
+import React, { createContext, useCallback, useContext, useEffect, useRef, useState } from 'react';
+import {
+  getToken,
+  getUser,
+  setToken,
+  setUser,
+  clearSession,
+  apiPost,
+  apiFetch,
+  setOnSessionExpired,
+} from './api';
 
 interface UserData {
   id: number;
@@ -17,6 +26,8 @@ interface AuthContextType {
   signup: (email: string, password: string, fullName: string) => Promise<{ ok: boolean; error?: string; message?: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** Register a callback when the session is cleared (e.g. 401). Returns unsubscribe. */
+  onSessionExpired: (callback: () => void) => () => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -27,11 +38,34 @@ const AuthContext = createContext<AuthContextType>({
   signup: async () => ({ ok: false }),
   logout: async () => {},
   refreshUser: async () => {},
+  onSessionExpired: () => () => {},
 });
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUserState] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const sessionExpiredListenersRef = useRef<Set<() => void>>(new Set());
+
+  const onSessionExpired = useCallback((callback: () => void) => {
+    sessionExpiredListenersRef.current.add(callback);
+    return () => {
+      sessionExpiredListenersRef.current.delete(callback);
+    };
+  }, []);
+
+  useEffect(() => {
+    setOnSessionExpired(() => {
+      setUserState(null);
+      sessionExpiredListenersRef.current.forEach((listener) => {
+        try {
+          listener();
+        } catch {}
+      });
+    });
+    return () => {
+      setOnSessionExpired(null);
+    };
+  }, []);
 
   useEffect(() => {
     loadUser();
@@ -40,13 +74,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const loadUser = async () => {
     try {
       const token = await getToken();
-      if (token) {
-        const userData = await getUser();
-        if (userData) {
-          setUserState(userData as unknown as UserData);
-        }
+      if (!token) {
+        setIsLoading(false);
+        return;
       }
-    } catch {}
+
+      const response = await apiFetch('/api/user/me');
+      if (!response.ok) {
+        await clearSession();
+        setUserState(null);
+        setIsLoading(false);
+        return;
+      }
+
+      const userData = (await response.json()) as Record<string, unknown>;
+      await setUser(userData);
+      setUserState(userData as unknown as UserData);
+    } catch {
+      await clearSession();
+      setUserState(null);
+    }
     setIsLoading(false);
   };
 
@@ -120,6 +167,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         signup,
         logout,
         refreshUser,
+        onSessionExpired,
       }}>
       {children}
     </AuthContext.Provider>

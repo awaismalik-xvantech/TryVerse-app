@@ -16,10 +16,10 @@ import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
-import { apiGet, apiPost, apiFetch } from '@/lib/api';
+import { apiGet, apiFetch } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-type Section = 'main' | 'measurements' | 'settings';
+type Section = 'main' | 'measurements' | 'settings' | 'notifications';
 
 interface Measurements {
   height: number | null;
@@ -41,6 +41,9 @@ export default function ProfileScreen() {
     unit: 'cm',
   });
   const [savingMeasurements, setSavingMeasurements] = useState(false);
+  const [notificationsEnabled, setNotificationsEnabled] = useState(false);
+  const [promoNotifications, setPromoNotifications] = useState(true);
+  const [resultNotifications, setResultNotifications] = useState(true);
 
   useEffect(() => {
     loadMeasurements();
@@ -154,6 +157,74 @@ export default function ProfileScreen() {
     );
   }
 
+  if (section === 'notifications') {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
+          <Pressable onPress={() => setSection('main')} style={styles.backButton}>
+            <Ionicons name="arrow-back" size={24} color={Colors.light.charcoal} />
+          </Pressable>
+          <Text style={styles.sectionTitle}>Notifications</Text>
+          <Text style={styles.sectionDesc}>Manage your notification preferences</Text>
+
+          <View style={styles.notifRow}>
+            <View style={styles.notifInfo}>
+              <View style={[styles.menuItemIconBg, { marginRight: Spacing.md }]}>
+                <Ionicons name="notifications-outline" size={20} color={Colors.light.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifLabel}>Push Notifications</Text>
+                <Text style={styles.notifDesc}>Enable all push notifications</Text>
+              </View>
+            </View>
+            <Switch
+              value={notificationsEnabled}
+              onValueChange={setNotificationsEnabled}
+              trackColor={{ false: Colors.light.border, true: Colors.light.gold + '60' }}
+              thumbColor={notificationsEnabled ? Colors.light.gold : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.notifRow}>
+            <View style={styles.notifInfo}>
+              <View style={[styles.menuItemIconBg, { marginRight: Spacing.md }]}>
+                <Ionicons name="image-outline" size={20} color={Colors.light.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifLabel}>Generation Complete</Text>
+                <Text style={styles.notifDesc}>Notify when try-on images are ready</Text>
+              </View>
+            </View>
+            <Switch
+              value={resultNotifications}
+              onValueChange={setResultNotifications}
+              trackColor={{ false: Colors.light.border, true: Colors.light.gold + '60' }}
+              thumbColor={resultNotifications ? Colors.light.gold : '#f4f3f4'}
+            />
+          </View>
+
+          <View style={styles.notifRow}>
+            <View style={styles.notifInfo}>
+              <View style={[styles.menuItemIconBg, { marginRight: Spacing.md }]}>
+                <Ionicons name="megaphone-outline" size={20} color={Colors.light.gold} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.notifLabel}>Promotions & Tips</Text>
+                <Text style={styles.notifDesc}>Style tips and special offers</Text>
+              </View>
+            </View>
+            <Switch
+              value={promoNotifications}
+              onValueChange={setPromoNotifications}
+              trackColor={{ false: Colors.light.border, true: Colors.light.gold + '60' }}
+              thumbColor={promoNotifications ? Colors.light.gold : '#f4f3f4'}
+            />
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
   return (
     <SafeAreaView style={styles.container} edges={['top']}>
       <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false}>
@@ -191,7 +262,7 @@ export default function ProfileScreen() {
             icon="time-outline"
             label="Try-On History"
             desc="Your past generations"
-            onPress={() => Alert.alert('Coming Soon', 'Try-On History will be available in a future update.')}
+            onPress={() => router.push('/tryon-history')}
           />
           <MenuItem
             icon="card-outline"
@@ -207,8 +278,8 @@ export default function ProfileScreen() {
           <MenuItem
             icon="notifications-outline"
             label="Notifications"
-            desc="Push notification settings"
-            onPress={() => Alert.alert('Coming Soon', 'Notification settings will be available in a future update.')}
+            desc="Manage push notifications"
+            onPress={() => setSection('notifications')}
           />
           <MenuItem
             icon="shield-outline"
@@ -400,4 +471,27 @@ const styles = StyleSheet.create({
     marginTop: Spacing.base,
   },
   logoutText: { fontSize: FontSize.base, fontWeight: '600', color: Colors.light.danger },
+  notifRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.md,
+    borderBottomWidth: 1,
+    borderBottomColor: Colors.light.borderLight,
+  },
+  notifInfo: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  notifLabel: {
+    fontSize: FontSize.base,
+    fontWeight: '600',
+    color: Colors.light.charcoal,
+  },
+  notifDesc: {
+    fontSize: FontSize.xs,
+    color: Colors.light.textSecondary,
+    marginTop: 2,
+  },
 });

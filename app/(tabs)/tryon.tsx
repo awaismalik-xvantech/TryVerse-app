@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import {
   View,
   Text,
@@ -10,7 +10,6 @@ import {
   ActivityIndicator,
   Alert,
   Dimensions,
-  Animated,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -19,39 +18,9 @@ import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { apiUpload, apiFetch, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
+import { ImageResult } from '@/components/ImageResult';
 
 const { width } = Dimensions.get('window');
-
-function ResultSuccessView({ resultImageUrl }: { resultImageUrl: string }) {
-  const scaleAnim = useRef(new Animated.Value(0.8)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(scaleAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 400,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [resultImageUrl, scaleAnim, fadeAnim]);
-
-  return (
-    <Animated.View
-      style={[
-        styles.resultContainer,
-        { opacity: fadeAnim, transform: [{ scale: scaleAnim }] },
-      ]}>
-      <Text style={styles.resultTitle}>Your Try-On Result</Text>
-      <Image source={{ uri: resultImageUrl }} style={styles.resultImage} />
-    </Animated.View>
-  );
-}
 
 export default function TryOnScreen() {
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
@@ -147,6 +116,10 @@ export default function TryOnScreen() {
             ? data.result_photo_url
             : `${API_URL}${data.result_photo_url}`;
           setResultImageUrl(url);
+          Alert.alert(
+            'Image Ready!',
+            'Your try-on image has been generated. Save it to your gallery before leaving.'
+          );
         }
       } else {
         const err = await response.json().catch(() => null);
@@ -265,7 +238,7 @@ export default function TryOnScreen() {
 
         {/* Result */}
         {resultImageUrl && (
-          <ResultSuccessView resultImageUrl={resultImageUrl} />
+          <ImageResult imageUrl={resultImageUrl} title="Your Try-On Result" />
         )}
 
         <View style={{ height: 120 }} />
@@ -375,13 +348,4 @@ const styles = StyleSheet.create({
     paddingVertical: Spacing.base,
   },
   generateButtonText: { fontSize: FontSize.md, fontWeight: '700', color: '#1a1a2e' },
-  resultContainer: { marginTop: Spacing.xl },
-  resultTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.light.charcoal, marginBottom: Spacing.md },
-  resultImage: {
-    width: '100%',
-    height: width - Spacing.xl * 2,
-    borderRadius: BorderRadius.xl,
-    resizeMode: 'cover',
-    backgroundColor: Colors.light.surfaceSecondary,
-  },
 });
