@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -14,6 +15,7 @@ import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius, Gradients } from '@/constants/theme';
 import { Logo } from '@/components/Logo';
+import { ProUpgradeModal } from '@/components/ProUpgradeModal';
 import { useAuth } from '@/lib/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -69,6 +71,14 @@ const quickActions = [
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const [showProPopup, setShowProPopup] = useState(false);
+
+  useEffect(() => {
+    if (user && !user.is_pro) {
+      const timer = setTimeout(() => setShowProPopup(true), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [user]);
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -89,6 +99,7 @@ export default function HomeScreen() {
           <View style={styles.headerLeft}>
             <Logo size="sm" />
             <Text style={styles.greeting}>{getGreeting()}, <Text style={styles.userName}>{firstName}</Text></Text>
+            <Text style={styles.welcomeSub}>Ready to try something new today?</Text>
           </View>
           <Pressable
             onPress={() => router.push('/(tabs)/profile')}
@@ -239,6 +250,7 @@ export default function HomeScreen() {
 
         <View style={{ height: 100 }} />
       </ScrollView>
+      <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} />
     </SafeAreaView>
   );
 }
@@ -255,6 +267,11 @@ const styles = StyleSheet.create({
   },
   headerLeft: {},
   greeting: { fontSize: FontSize.sm, color: Colors.light.textSecondary, fontWeight: '500' },
+  welcomeSub: {
+    fontSize: FontSize.xs,
+    color: Colors.light.textMuted,
+    marginTop: 2,
+  },
   userName: { fontWeight: '800', color: Colors.light.charcoal },
   avatarButton: {},
   avatar: {

@@ -10,7 +10,6 @@ import {
   Dimensions,
   ActivityIndicator,
   RefreshControl,
-  ImageBackground,
   ScrollView,
 } from 'react-native';
 import { useRouter } from 'expo-router';
@@ -71,28 +70,23 @@ export default function ShopScreen() {
     console.log('[SHOP] Brands loaded:', brandList.length);
     setStores(brandList);
 
-    let newProducts: Product[] = [];
+    // Only load products if a store is selected
+    if (!selectedStore) {
+      setProducts([]);
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+      return;
+    }
 
-    if (selectedStore) {
-      let url = `/api/store/brands/${selectedStore}/products?limit=${PAGE_SIZE}&offset=${currentPage * PAGE_SIZE}`;
-      if (gender !== 'all') url += `&gender=${gender}`;
-      if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
-      const prodRes = await apiGet<Product[]>(url);
-      if (prodRes.ok && prodRes.data) {
-        newProducts = prodRes.data;
-        if (prodRes.data.length < PAGE_SIZE) setHasMore(false);
-      }
-    } else if (brandList.length > 0) {
-      const fetches = brandList.map(async (store) => {
-        let url = `/api/store/brands/${store.id}/products?limit=${PAGE_SIZE}&offset=${currentPage * PAGE_SIZE}`;
-        if (gender !== 'all') url += `&gender=${gender}`;
-        if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
-        const res = await apiGet<Product[]>(url);
-        return res.ok && res.data ? res.data : [];
-      });
-      const results = await Promise.all(fetches);
-      newProducts = results.flat();
-      if (newProducts.length < PAGE_SIZE) setHasMore(false);
+    let newProducts: Product[] = [];
+    let url = `/api/store/brands/${selectedStore}/products?limit=${PAGE_SIZE}&offset=${currentPage * PAGE_SIZE}`;
+    if (gender !== 'all') url += `&gender=${gender}`;
+    if (search.trim()) url += `&search=${encodeURIComponent(search.trim())}`;
+    const prodRes = await apiGet<Product[]>(url);
+    if (prodRes.ok && prodRes.data) {
+      newProducts = prodRes.data;
+      if (prodRes.data.length < PAGE_SIZE) setHasMore(false);
     }
 
     console.log('[SHOP] Products loaded:', newProducts.length, 'page:', currentPage);
@@ -172,7 +166,11 @@ export default function ShopScreen() {
         <View style={styles.headerContent}>
           <View>
             <Text style={styles.headerTitle}>Fashion Store</Text>
-            <Text style={styles.headerSub}>{products.length} products from {stores.length} brands</Text>
+            <Text style={styles.headerSub}>
+              {!selectedStore
+                ? `${stores.length} brands · ${stores.reduce((sum, s) => sum + s.product_count, 0).toLocaleString()} products`
+                : `${products.length} products from ${stores.length} brands`}
+            </Text>
           </View>
           <View style={styles.headerBadge}>
             <Ionicons name="storefront" size={20} color={Colors.light.gold} />
@@ -213,40 +211,6 @@ export default function ShopScreen() {
         ))}
       </View>
 
-      {!selectedStore && (
-        <Animated.View entering={FadeInDown.delay(100)}>
-          <View style={styles.brandSection}>
-            <Text style={styles.brandSectionTitle}>Shop by Brand</Text>
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.brandCardScroll}>
-              {stores.map((store) => (
-                <Pressable
-                  key={store.id}
-                  onPress={() => setSelectedStore(store.id)}
-                  style={styles.brandCard}>
-                  {store.logo_url ? (
-                    <Image
-                      source={{ uri: resolveImageUrl(store.logo_url) }}
-                      style={styles.brandCardLogo}
-                    />
-                  ) : (
-                    <View style={styles.brandCardLogoPlaceholder}>
-                      <Ionicons name="storefront" size={28} color={Colors.light.gold} />
-                    </View>
-                  )}
-                  <Text style={styles.brandCardName} numberOfLines={1}>
-                    {store.name}
-                  </Text>
-                  <Text style={styles.brandCardCount}>{store.product_count} products</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-          </View>
-        </Animated.View>
-      )}
-
       {selectedStore && (
         <View style={styles.selectedBrandBar}>
           <Text style={styles.selectedBrandName}>
@@ -259,11 +223,46 @@ export default function ShopScreen() {
         </View>
       )}
 
-      {/* Product Grid */}
+      {/* Brand grid (no store) or product grid */}
       {loading ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.light.gold} />
         </View>
+      ) : !selectedStore ? (
+        <ScrollView
+          contentContainerStyle={styles.brandGrid}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.light.gold} />
+          }>
+          <Text style={styles.brandGridTitle}>Explore Fashion Stores</Text>
+          <Text style={styles.brandGridSub}>
+            Browse {stores.length} brands and{' '}
+            {stores.reduce((sum, s) => sum + s.product_count, 0).toLocaleString()} products
+          </Text>
+
+          <View style={styles.brandGridContainer}>
+            {stores.map((store) => (
+              <Pressable
+                key={store.id}
+                onPress={() => setSelectedStore(store.id)}
+                style={styles.brandGridCard}>
+                {store.logo_url ? (
+                  <Image source={{ uri: resolveImageUrl(store.logo_url) }} style={styles.brandGridLogo} />
+                ) : (
+                  <View style={styles.brandGridLogoPlaceholder}>
+                    <Text style={styles.brandGridInitial}>{store.name.charAt(0)}</Text>
+                  </View>
+                )}
+                <Text style={styles.brandGridName} numberOfLines={1}>
+                  {store.name}
+                </Text>
+                <Text style={styles.brandGridCount}>{store.product_count} products</Text>
+              </Pressable>
+            ))}
+          </View>
+          <View style={{ height: 120 }} />
+        </ScrollView>
       ) : (
         <FlatList
           data={products}
@@ -347,26 +346,31 @@ const styles = StyleSheet.create({
   filterChipActive: { backgroundColor: Colors.light.charcoal, borderColor: Colors.light.charcoal },
   filterChipText: { fontSize: FontSize.sm, color: Colors.light.textSecondary, fontWeight: '500' },
   filterChipTextActive: { color: '#fff' },
-  brandSection: {
+  brandGrid: {
     paddingHorizontal: Spacing.xl,
-    marginTop: Spacing.md,
-    marginBottom: Spacing.md,
+    paddingTop: Spacing.md,
   },
-  brandSectionTitle: {
-    fontSize: FontSize.md,
-    fontWeight: '700',
+  brandGridTitle: {
+    fontSize: FontSize.xl,
+    fontWeight: '800',
     color: Colors.light.charcoal,
-    marginBottom: Spacing.md,
+    marginBottom: 4,
   },
-  brandCardScroll: {
+  brandGridSub: {
+    fontSize: FontSize.sm,
+    color: Colors.light.textSecondary,
+    marginBottom: Spacing.xl,
+  },
+  brandGridContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: Spacing.md,
-    paddingRight: Spacing.xl,
   },
-  brandCard: {
-    width: 130,
+  brandGridCard: {
+    width: (width - Spacing.xl * 2 - Spacing.md) / 2,
     backgroundColor: '#fff',
     borderRadius: BorderRadius.lg,
-    padding: Spacing.base,
+    padding: Spacing.lg,
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.light.borderLight,
@@ -376,32 +380,37 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 2,
   },
-  brandCardLogo: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    marginBottom: Spacing.sm,
+  brandGridLogo: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    marginBottom: Spacing.md,
     backgroundColor: Colors.light.surfaceSecondary,
   },
-  brandCardLogoPlaceholder: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: Colors.light.gold + '15',
+  brandGridLogoPlaceholder: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: Colors.light.charcoal,
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
-  brandCardName: {
-    fontSize: FontSize.sm,
+  brandGridInitial: {
+    fontSize: FontSize.xl,
+    fontWeight: '700',
+    color: '#fff',
+  },
+  brandGridName: {
+    fontSize: FontSize.base,
     fontWeight: '700',
     color: Colors.light.charcoal,
     textAlign: 'center',
   },
-  brandCardCount: {
+  brandGridCount: {
     fontSize: FontSize.xs,
     color: Colors.light.textSecondary,
-    marginTop: 2,
+    marginTop: 4,
   },
   selectedBrandBar: {
     flexDirection: 'row',

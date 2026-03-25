@@ -1,5 +1,6 @@
-import { useState } from 'react';
-import { View, Text, Image, Pressable, StyleSheet, Alert, Dimensions } from 'react-native';
+import { useState, useEffect } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, Dimensions, ActivityIndicator } from 'react-native';
+import { Image as ExpoImage } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library';
 import { File, Paths } from 'expo-file-system';
 import type { DownloadOptions } from 'expo-file-system';
@@ -13,11 +14,48 @@ const { width } = Dimensions.get('window');
 interface ImageResultProps {
   imageUrl: string;
   title?: string;
+  aiFeedback?: string | null;
 }
 
-export function ImageResult({ imageUrl, title = 'Your Result' }: ImageResultProps) {
+export function ImageResult({ imageUrl, title = 'Your Result', aiFeedback }: ImageResultProps) {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [localUri, setLocalUri] = useState<string | null>(null);
+  const [loadingImage, setLoadingImage] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [retryKey, setRetryKey] = useState(0);
+
+  useEffect(() => {
+    let cancelled = false;
+    const loadImage = async () => {
+      try {
+        setLoadingImage(true);
+        setLoadError(false);
+        const filename = `tryverse_preview_${Date.now()}.jpg`;
+        const destination = new File(Paths.cache, filename);
+        const downloadOpts: DownloadOptions = {};
+        if (imageUrl.startsWith(API_URL)) {
+          const token = await getToken();
+          if (token) downloadOpts.headers = { Authorization: `Bearer ${token}` };
+        }
+        const file = await File.downloadFileAsync(imageUrl, destination, downloadOpts);
+        if (!cancelled) {
+          setLocalUri(file.uri);
+          setLoadingImage(false);
+        }
+      } catch (error) {
+        console.log('[ImageResult] Failed to load image:', error);
+        if (!cancelled) {
+          setLoadError(true);
+          setLoadingImage(false);
+        }
+      }
+    };
+    loadImage();
+    return () => {
+      cancelled = true;
+    };
+  }, [imageUrl, retryKey]);
 
   const saveToGallery = async () => {
     try {
@@ -26,17 +64,22 @@ export function ImageResult({ imageUrl, title = 'Your Result' }: ImageResultProp
         Alert.alert('Permission Required', 'Please allow access to save images to your gallery.');
         return;
       }
-
       setSaving(true);
-      const filename = `tryverse_${Date.now()}.jpg`;
-      const destination = new File(Paths.cache, filename);
-      const downloadOpts: DownloadOptions = {};
-      if (imageUrl.startsWith(API_URL)) {
-        const token = await getToken();
-        if (token) downloadOpts.headers = { Authorization: `Bearer ${token}` };
+
+      let saveUri = localUri;
+      if (!saveUri) {
+        const filename = `tryverse_${Date.now()}.jpg`;
+        const destination = new File(Paths.cache, filename);
+        const downloadOpts: DownloadOptions = {};
+        if (imageUrl.startsWith(API_URL)) {
+          const token = await getToken();
+          if (token) downloadOpts.headers = { Authorization: `Bearer ${token}` };
+        }
+        const file = await File.downloadFileAsync(imageUrl, destination, downloadOpts);
+        saveUri = file.uri;
       }
-      const file = await File.downloadFileAsync(imageUrl, destination, downloadOpts);
-      await MediaLibrary.saveToLibraryAsync(file.uri);
+
+      await MediaLibrary.saveToLibraryAsync(saveUri);
       setSaved(true);
       Alert.alert('Saved!', 'Image has been saved to your gallery.');
     } catch (error) {
@@ -58,7 +101,33 @@ export function ImageResult({ imageUrl, title = 'Your Result' }: ImageResultProp
       </View>
 
       <View style={styles.imageWrapper}>
-        <Image source={{ uri: imageUrl }} style={styles.image} resizeMode="contain" />
+        {loadingImage ? (
+          <View style={[styles.image, styles.imageLoading]}>
+            <ActivityIndicator size="large" color={Colors.light.gold} />
+            <Text style={styles.loadingText}>Loading image...</Text>
+          </View>
+        ) : loadError ? (
+          <View style={[styles.image, styles.imageLoading]}>
+            <Ionicons name="image-outline" size={48} color={Colors.light.textMuted} />
+            <Text style={styles.loadingText}>Could not load image</Text>
+            <Pressable
+              onPress={() => {
+                setLoadError(false);
+                setLocalUri(null);
+                setRetryKey((k) => k + 1);
+              }}
+              style={styles.retryButton}>
+              <Text style={styles.retryText}>Retry</Text>
+            </Pressable>
+          </View>
+        ) : localUri ? (
+          <ExpoImage
+            source={{ uri: localUri }}
+            style={styles.image}
+            contentFit="contain"
+            transition={300}
+          />
+        ) : null}
       </View>
 
       <View style={styles.actions}>
@@ -79,6 +148,18 @@ export function ImageResult({ imageUrl, title = 'Your Result' }: ImageResultProp
           </LinearGradient>
         </Pressable>
       </View>
+
+      {aiFeedback && (
+        <View style={styles.feedbackSection}>
+          <View style={styles.feedbackHeader}>
+            <View style={styles.feedbackIconBg}>
+              <Ionicons name="chatbubble-ellipses-outline" size={16} color={Colors.light.gold} />
+            </View>
+            <Text style={styles.feedbackTitle}>AI Styling Feedback</Text>
+          </View>
+          <Text style={styles.feedbackText}>{aiFeedback}</Text>
+        </View>
+      )}
 
       <Text style={styles.hint}>
         Download your image before leaving — it won't be stored on our servers
@@ -117,6 +198,60 @@ const styles = StyleSheet.create({
     width: '100%',
     height: width - Spacing.xl * 2,
     backgroundColor: Colors.light.surfaceSecondary,
+  },
+  imageLoading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
+  loadingText: {
+    fontSize: FontSize.sm,
+    color: Colors.light.textMuted,
+    marginTop: Spacing.sm,
+  },
+  retryButton: {
+    marginTop: Spacing.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.sm,
+    backgroundColor: Colors.light.gold + '20',
+    borderRadius: BorderRadius.md,
+  },
+  retryText: {
+    fontSize: FontSize.sm,
+    fontWeight: '600',
+    color: Colors.light.gold,
+  },
+  feedbackSection: {
+    marginTop: Spacing.lg,
+    backgroundColor: Colors.light.surfaceSecondary,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.base,
+    borderWidth: 1,
+    borderColor: Colors.light.borderLight,
+  },
+  feedbackHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  feedbackIconBg: {
+    width: 28,
+    height: 28,
+    borderRadius: 8,
+    backgroundColor: Colors.light.gold + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  feedbackTitle: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+    color: Colors.light.charcoal,
+  },
+  feedbackText: {
+    fontSize: FontSize.sm,
+    color: Colors.light.textSecondary,
+    lineHeight: 20,
   },
   actions: { marginTop: Spacing.md },
   saveButton: {

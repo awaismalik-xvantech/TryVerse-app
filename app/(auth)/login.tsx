@@ -158,21 +158,25 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#1a1a2e',
   },
   bgImage: {
     ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
   },
   bgOverlay: {
     ...StyleSheet.absoluteFillObject,
+    width: '100%',
+    height: '100%',
     backgroundColor: 'rgba(255,255,255,0.85)',
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
     paddingHorizontal: Spacing.xl,
-    paddingTop: 50,
-    paddingBottom: 32,
+    paddingTop: Platform.OS === 'ios' ? 60 : 40,
+    paddingBottom: Platform.OS === 'ios' ? 40 : 24,
   },
   logoArea: {
     alignItems: 'center',

@@ -1,6 +1,5 @@
 import { View, Text, StyleSheet, ViewStyle } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
 
 interface LogoProps {
   size?: 'sm' | 'md' | 'lg';
@@ -10,26 +9,41 @@ interface LogoProps {
 }
 
 const sizeMap = {
-  sm: { icon: 20, iconBox: 28, text: 16, gap: 5 },
-  md: { icon: 24, iconBox: 34, text: 20, gap: 6 },
-  lg: { icon: 32, iconBox: 44, text: 28, gap: 8 },
+  sm: { mark: 28, letter: 14, text: 16, gap: 5 },
+  md: { mark: 34, letter: 17, text: 20, gap: 6 },
+  lg: { mark: 44, letter: 22, text: 28, gap: 8 },
 };
 
 export function Logo({ size = 'md', showText = true, light = false, style }: LogoProps) {
   const s = sizeMap[size];
+  const r = s.mark / 2;
 
   return (
     <View style={[styles.container, { gap: s.gap }, style]}>
-      <LinearGradient
-        colors={['#c9a96e', '#e8c98a']}
+      <View
         style={[
-          styles.iconBox,
-          { width: s.iconBox, height: s.iconBox, borderRadius: s.iconBox / 2 },
-        ]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}>
-        <Ionicons name="diamond" size={s.icon * 0.7} color="#fff" />
-      </LinearGradient>
+          styles.markShadow,
+          {
+            width: s.mark + 4,
+            height: s.mark + 4,
+            borderRadius: (s.mark + 4) / 2,
+          },
+        ]}>
+        <LinearGradient
+          colors={['#c9a96e', '#e8c98a']}
+          style={[
+            styles.markGradient,
+            {
+              width: s.mark,
+              height: s.mark,
+              borderRadius: r,
+            },
+          ]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}>
+          <Text style={[styles.markLetter, { fontSize: s.letter }]}>T</Text>
+        </LinearGradient>
+      </View>
       {showText && (
         <Text style={[styles.brandText, { fontSize: s.text }]}>
           <Text style={styles.brandGold}>Try</Text>
@@ -45,9 +59,27 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
   },
-  iconBox: {
+  markShadow: {
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: 'rgba(201, 169, 110, 0.25)',
+    shadowColor: '#8b7355',
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.35,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  markGradient: {
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255, 255, 255, 0.55)',
+  },
+  markLetter: {
+    fontWeight: '800',
+    color: '#ffffff',
+    marginTop: -2,
+    letterSpacing: -0.5,
   },
   brandText: {
     fontWeight: '800',

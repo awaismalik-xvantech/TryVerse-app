@@ -13,6 +13,7 @@ import {
   Platform,
   KeyboardAvoidingView,
 } from 'react-native';
+import { sendLocalNotification } from '@/lib/notifications';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
@@ -22,6 +23,8 @@ import { apiUpload, apiFetch, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { ImageResult } from '@/components/ImageResult';
+import { ProUpgradeModal } from '@/components/ProUpgradeModal';
+import { useAuth } from '@/lib/auth';
 
 const { width } = Dimensions.get('window');
 
@@ -92,6 +95,8 @@ const STYLIST_CATEGORY_WELCOME: Record<StylistCategoryId, string> = {
 };
 
 export default function StyleScreen() {
+  const { user } = useAuth();
+  const [showProPopup, setShowProPopup] = useState(false);
   const [tab, setTab] = useState<Tab>('stylist');
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
@@ -100,6 +105,7 @@ export default function StyleScreen() {
   const [selectedPose, setSelectedPose] = useState<string | null>(null);
   const [posePhotoUri, setPosePhotoUri] = useState<string | null>(null);
   const [poseResult, setPoseResult] = useState<string | null>(null);
+  const [poseFeedback, setPoseFeedback] = useState<string | null>(null);
   const [isGeneratingPose, setIsGeneratingPose] = useState(false);
   const [stylistPhotoUri, setStylistPhotoUri] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
@@ -252,11 +258,16 @@ export default function StyleScreen() {
       if (data.generated_image_urls && data.generated_image_urls.length > 0) {
         const url = data.generated_image_urls[0];
         setPoseResult(url.startsWith('http') ? url : `${API_URL}${url}`);
+        setPoseFeedback((res.data as any)?.ai_feedback || null);
         console.log('[POSE] Generation completed', { resultCount: data.generated_image_urls.length });
+        sendLocalNotification('Image Ready!', 'Your pose is ready. Open the app to view and save it.');
         Alert.alert(
           'Image Ready!',
           'Your pose image has been generated. Save it to your gallery before leaving.'
         );
+        if (!user?.is_pro) {
+          setTimeout(() => setShowProPopup(true), 2000);
+        }
       }
     } else {
       console.log('[POSE] Generation failed', { endpoint, error: res.error });
@@ -473,12 +484,13 @@ export default function StyleScreen() {
           </Pressable>
 
           {poseResult && (
-            <ImageResult imageUrl={poseResult} title="Your Pose Result" />
+            <ImageResult imageUrl={poseResult} title="Your Pose Result" aiFeedback={poseFeedback} />
           )}
 
           <View style={{ height: 120 }} />
         </ScrollView>
       )}
+      <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} variant="compact" />
     </SafeAreaView>
   );
 }

@@ -13,22 +13,28 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
+import { sendLocalNotification } from '@/lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { apiUpload, apiFetch, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { ImageResult } from '@/components/ImageResult';
+import { ProUpgradeModal } from '@/components/ProUpgradeModal';
+import { useAuth } from '@/lib/auth';
 
 const { width } = Dimensions.get('window');
 
 export default function TryOnScreen() {
+  const { user } = useAuth();
+  const [showProPopup, setShowProPopup] = useState(false);
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const [productUrl, setProductUrl] = useState('');
   const [bodyType, setBodyType] = useState<'full_body' | 'upper_body'>('full_body');
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
   const [fileId, setFileId] = useState<string | null>(null);
 
   const pickImage = async (useCamera: boolean) => {
@@ -116,10 +122,15 @@ export default function TryOnScreen() {
             ? data.result_photo_url
             : `${API_URL}${data.result_photo_url}`;
           setResultImageUrl(url);
+          setAiFeedback(data.ai_feedback || null);
+          sendLocalNotification('Image Ready!', 'Your try-on image has been generated. Open the app to view and save it.');
           Alert.alert(
             'Image Ready!',
             'Your try-on image has been generated. Save it to your gallery before leaving.'
           );
+          if (!user?.is_pro) {
+            setTimeout(() => setShowProPopup(true), 2000);
+          }
         }
       } else {
         const err = await response.json().catch(() => null);
@@ -238,11 +249,12 @@ export default function TryOnScreen() {
 
         {/* Result */}
         {resultImageUrl && (
-          <ImageResult imageUrl={resultImageUrl} title="Your Try-On Result" />
+          <ImageResult imageUrl={resultImageUrl} title="Your Try-On Result" aiFeedback={aiFeedback} />
         )}
 
         <View style={{ height: 120 }} />
       </ScrollView>
+      <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} variant="compact" />
     </SafeAreaView>
   );
 }

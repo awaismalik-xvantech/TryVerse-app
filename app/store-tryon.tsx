@@ -13,12 +13,15 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
+import { sendLocalNotification } from '@/lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { apiGet, apiFetch, getToken, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { ImageResult } from '@/components/ImageResult';
+import { ProUpgradeModal } from '@/components/ProUpgradeModal';
+import { useAuth } from '@/lib/auth';
 
 interface Product {
   id: number;
@@ -32,6 +35,8 @@ interface Product {
 }
 
 export default function StoreTryOnScreen() {
+  const { user } = useAuth();
+  const [showProPopup, setShowProPopup] = useState(false);
   const { product: productId, store: storeId } = useLocalSearchParams<{
     product: string;
     store: string;
@@ -45,6 +50,7 @@ export default function StoreTryOnScreen() {
   const [isUploading, setIsUploading] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [resultImageUrl, setResultImageUrl] = useState<string | null>(null);
+  const [aiFeedback, setAiFeedback] = useState<string | null>(null);
   const [bodyType, setBodyType] = useState<'full_body' | 'upper_body'>('full_body');
 
   useEffect(() => {
@@ -142,10 +148,15 @@ export default function StoreTryOnScreen() {
         if (data.output_file_id) {
           console.log('[GENERATION] Store Try-On: generation completed', { outputFileId: data.output_file_id });
           setResultImageUrl(`${API_URL}/api/store/download/${data.output_file_id}`);
+          setAiFeedback(data.ai_feedback || null);
+          sendLocalNotification('Image Ready!', 'Your store try-on is ready. Open the app to view and save it.');
           Alert.alert(
             'Image Ready!',
             'Your store try-on image has been generated. Save it to your gallery before leaving.'
           );
+          if (!user?.is_pro) {
+            setTimeout(() => setShowProPopup(true), 2000);
+          }
         }
       } else {
         const err = await response.json().catch(() => null);
@@ -267,11 +278,12 @@ export default function StoreTryOnScreen() {
 
         {/* Result */}
         {resultImageUrl && (
-          <ImageResult imageUrl={resultImageUrl} title="Your Store Try-On" />
+          <ImageResult imageUrl={resultImageUrl} title="Your Store Try-On" aiFeedback={aiFeedback} />
         )}
 
         <View style={{ height: 40 }} />
       </ScrollView>
+      <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} variant="compact" />
     </SafeAreaView>
   );
 }

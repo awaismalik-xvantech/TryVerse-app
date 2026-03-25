@@ -1,9 +1,15 @@
+import { useEffect } from 'react';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { AuthProvider } from '@/lib/auth';
+import { registerForPushNotifications } from '@/lib/notifications';
 import 'react-native-reanimated';
 
 export default function RootLayout() {
+  useEffect(() => {
+    registerForPushNotifications();
+  }, []);
+
   return (
     <AuthProvider>
       <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
