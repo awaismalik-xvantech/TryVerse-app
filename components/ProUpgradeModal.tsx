@@ -1,10 +1,9 @@
-import { Modal, View, Text, Pressable, StyleSheet, Dimensions } from 'react-native';
+import { useState } from 'react';
+import { Modal, View, Text, Pressable, StyleSheet, useWindowDimensions, ActivityIndicator, Linking, Alert, ScrollView } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-import { useRouter } from 'expo-router';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
-
-const { width } = Dimensions.get('window');
+import { apiFetch } from '@/lib/api';
 
 interface ProUpgradeModalProps {
   visible: boolean;
@@ -19,19 +18,37 @@ const FEATURES = [
 ];
 
 export function ProUpgradeModal({ visible, onClose, variant = 'full' }: ProUpgradeModalProps) {
-  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const [loading, setLoading] = useState(false);
+  const modalWidth = Math.min(width - Spacing.xl * 2, 400);
 
   if (!visible) return null;
 
-  const handleUpgrade = () => {
-    onClose();
-    router.push('/(tabs)/profile');
+  const handleUpgrade = async () => {
+    setLoading(true);
+    try {
+      const res = await apiFetch('/api/subscription/create-checkout', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.checkout_url) {
+          onClose();
+          await Linking.openURL(data.checkout_url);
+          return;
+        }
+      }
+      const err = await res.json().catch(() => null);
+      Alert.alert('Error', err?.detail || 'Could not start checkout. Please try again.');
+    } catch {
+      Alert.alert('Error', 'Connection failed. Please try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={styles.backdrop} onPress={onClose}>
-        <Pressable style={[styles.container, variant === 'compact' && styles.containerCompact]} onPress={(e) => e.stopPropagation()}>
+        <Pressable style={[styles.container, { width: modalWidth }, variant === 'compact' && styles.containerCompact]} onPress={(e) => e.stopPropagation()}>
           <Pressable onPress={onClose} style={styles.closeButton}>
             <Ionicons name="close" size={22} color={Colors.light.textMuted} />
           </Pressable>
@@ -70,14 +87,23 @@ export function ProUpgradeModal({ visible, onClose, variant = 'full' }: ProUpgra
             ))}
           </LinearGradient>
 
-          <Pressable style={styles.ctaButton} onPress={handleUpgrade}>
+          <Pressable style={styles.ctaButton} onPress={handleUpgrade} disabled={loading}>
             <LinearGradient
               colors={['#c9a96e', '#e8c98a']}
               style={styles.ctaGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}>
-              <Text style={styles.ctaText}>Upgrade to Pro</Text>
-              <Ionicons name="arrow-forward" size={18} color="#1a1a2e" />
+              {loading ? (
+                <>
+                  <ActivityIndicator color="#1a1a2e" size="small" />
+                  <Text style={styles.ctaText}>Redirecting...</Text>
+                </>
+              ) : (
+                <>
+                  <Text style={styles.ctaText}>Upgrade to Pro</Text>
+                  <Ionicons name="arrow-forward" size={18} color="#1a1a2e" />
+                </>
+              )}
             </LinearGradient>
           </Pressable>
 
@@ -99,7 +125,6 @@ const styles = StyleSheet.create({
     padding: Spacing.xl,
   },
   container: {
-    width: width - Spacing.xl * 2,
     backgroundColor: '#fff',
     borderRadius: BorderRadius['2xl'],
     padding: Spacing.xl,

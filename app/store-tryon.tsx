@@ -132,40 +132,59 @@ export default function StoreTryOnScreen() {
     const endpoint = `${API_URL}/api/store/try-on`;
     console.log('[GENERATION] Store Try-On: generation started', { endpoint, productId, sessionId });
     setIsGenerating(true);
-    try {
-      const response = await apiFetch('/api/store/try-on', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          product_id: parseInt(productId),
-          session_id: sessionId,
-          store_id: storeId ? parseInt(storeId) : undefined,
-        }),
-      });
-      console.log('[GENERATION] Store Try-On: response received', { status: response.status, ok: response.ok });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.output_file_id) {
-          console.log('[GENERATION] Store Try-On: generation completed', { outputFileId: data.output_file_id });
-          setResultImageUrl(`${API_URL}/api/store/download/${data.output_file_id}`);
-          setAiFeedback(data.ai_feedback || null);
-          sendLocalNotification('Image Ready!', 'Your store try-on is ready. Open the app to view and save it.');
-          Alert.alert(
-            'Image Ready!',
-            'Your store try-on image has been generated. Save it to your gallery before leaving.'
-          );
-          if (!user?.is_pro) {
-            setTimeout(() => setShowProPopup(true), 2000);
+
+    const MAX_RETRIES = 4;
+    const RETRY_DELAY = 15000;
+
+    for (let attempt = 0; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        const response = await apiFetch('/api/store/try-on', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            product_id: parseInt(productId),
+            session_id: sessionId,
+            store_id: storeId ? parseInt(storeId) : undefined,
+          }),
+        });
+        console.log('[GENERATION] Store Try-On: response received', { status: response.status, ok: response.ok, attempt });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.output_file_id) {
+            console.log('[GENERATION] Store Try-On: generation completed', { outputFileId: data.output_file_id });
+            setResultImageUrl(`${API_URL}/api/store/download/${data.output_file_id}`);
+            setAiFeedback(data.ai_feedback || null);
+            sendLocalNotification('Image Ready!', 'Your store try-on is ready. Open the app to view and save it.');
+            Alert.alert(
+              'Image Ready!',
+              'Your store try-on image has been generated. Save it to your gallery before leaving.'
+            );
+            if (!user?.is_pro) {
+              setTimeout(() => setShowProPopup(true), 2000);
+            }
           }
+          break;
+        } else if (response.status === 409 && attempt < MAX_RETRIES) {
+          console.log(`[GENERATION] Store Try-On: 409 conflict, retrying in ${RETRY_DELAY / 1000}s (attempt ${attempt + 1}/${MAX_RETRIES})`);
+          await new Promise((r) => setTimeout(r, RETRY_DELAY));
+          continue;
+        } else {
+          const err = await response.json().catch(() => null);
+          console.log('[GENERATION] Store Try-On: generation failed', { endpoint, status: response.status, err });
+          Alert.alert('Error', err?.detail || 'Generation failed');
+          break;
         }
-      } else {
-        const err = await response.json().catch(() => null);
-        console.log('[GENERATION] Store Try-On: generation failed', { endpoint, status: response.status, err });
-        Alert.alert('Error', err?.detail || 'Generation failed');
+      } catch (e) {
+        console.log('[GENERATION] Store Try-On: generation error', { endpoint, error: e, attempt });
+        if (attempt < MAX_RETRIES) {
+          console.log(`[GENERATION] Retrying after connection error in ${RETRY_DELAY / 1000}s`);
+          await new Promise((r) => setTimeout(r, RETRY_DELAY));
+          continue;
+        }
+        Alert.alert('Error', 'Connection failed. Please check your connection and try again.');
+        break;
       }
-    } catch (e) {
-      console.log('[GENERATION] Store Try-On: generation error', { endpoint, error: e });
-      Alert.alert('Error', 'Connection failed');
     }
     setIsGenerating(false);
   };

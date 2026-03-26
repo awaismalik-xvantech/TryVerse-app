@@ -6,12 +6,10 @@ import {
   StyleSheet,
   Animated,
   Easing,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
-
-const { width } = Dimensions.get('window');
 
 const PROGRESS_MESSAGES = [
   'Analyzing your photo...',
@@ -28,8 +26,6 @@ const PROGRESS_MESSAGES = [
   'Tip: Save your favorites to gallery after generation',
 ];
 
-const PROGRESS_BAR_WIDTH = width * 0.7;
-
 interface GeneratingOverlayProps {
   visible: boolean;
   message?: string;
@@ -37,6 +33,8 @@ interface GeneratingOverlayProps {
 }
 
 export function GeneratingOverlay({ visible, message, onComplete }: GeneratingOverlayProps) {
+  const { width } = useWindowDimensions();
+  const PROGRESS_BAR_WIDTH = width * 0.7;
   const spinValue = useRef(new Animated.Value(0)).current;
   const pulseValue = useRef(new Animated.Value(1)).current;
   const progressValue = useRef(new Animated.Value(0)).current;
@@ -134,7 +132,7 @@ export function GeneratingOverlay({ visible, message, onComplete }: GeneratingOv
             Your photos are processed securely and never saved
           </Text>
 
-          <View style={styles.progressTrack}>
+          <View style={[styles.progressTrack, { width: PROGRESS_BAR_WIDTH }]}>
             <Animated.View
               style={[
                 styles.progressFill,
@@ -161,7 +159,7 @@ const styles = StyleSheet.create({
   },
   content: {
     alignItems: 'center',
-    paddingHorizontal: width * 0.15,
+    paddingHorizontal: '15%',
   },
   iconContainer: {
     width: 120,
@@ -203,7 +201,6 @@ const styles = StyleSheet.create({
   },
   progressTrack: {
     marginTop: 24,
-    width: PROGRESS_BAR_WIDTH,
     height: 3,
     borderRadius: 2,
     backgroundColor: 'rgba(255,255,255,0.12)',

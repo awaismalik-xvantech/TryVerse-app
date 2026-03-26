@@ -88,3 +88,5 @@ export const FontSize = {
   '2xl': 28,
   '3xl': 34,
 } as const;
+
+export const TAB_BAR_SPACER = 100;

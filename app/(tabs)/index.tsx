@@ -5,7 +5,7 @@ import {
   StyleSheet,
   ScrollView,
   Pressable,
-  Dimensions,
+  useWindowDimensions,
   Image,
   ImageBackground,
 } from 'react-native';
@@ -13,14 +13,11 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeInRight } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius, Gradients } from '@/constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, Gradients, TAB_BAR_SPACER } from '@/constants/theme';
 import { Logo } from '@/components/Logo';
 import { ProUpgradeModal } from '@/components/ProUpgradeModal';
 import { useAuth } from '@/lib/auth';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get('window');
-const CARD_WIDTH = (width - Spacing.xl * 2 - Spacing.md) / 2;
 
 const features = [
   {
@@ -64,13 +61,15 @@ const features = [
 const quickActions = [
   { id: 'upload', icon: 'camera' as const, label: 'Take\nSelfie', color: '#c9a96e' },
   { id: 'url', icon: 'link' as const, label: 'Paste\nURL', color: '#8b6cc7' },
-  { id: 'history', icon: 'time' as const, label: 'Try-On\nHistory', color: '#e8618c' },
+  { id: 'stylist', icon: 'sparkles' as const, label: 'AI\nStylist', color: '#e8618c' },
   { id: 'measure', icon: 'body' as const, label: 'My\nSize', color: '#6b9b7a' },
 ];
 
 export default function HomeScreen() {
   const { user } = useAuth();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const CARD_WIDTH = (width - Spacing.xl * 2 - Spacing.md) / 2;
   const [showProPopup, setShowProPopup] = useState(false);
 
   useEffect(() => {
@@ -98,8 +97,8 @@ export default function HomeScreen() {
         <Animated.View entering={FadeInDown.delay(100)} style={styles.header}>
           <View style={styles.headerLeft}>
             <Logo size="sm" />
-            <Text style={styles.greeting}>{getGreeting()}, <Text style={styles.userName}>{firstName}</Text></Text>
-            <Text style={styles.welcomeSub}>Ready to try something new today?</Text>
+            <Text style={styles.greeting} numberOfLines={1}>{getGreeting()}, <Text style={styles.userName}>{firstName}</Text></Text>
+            <Text style={styles.welcomeSub} numberOfLines={1}>Ready to try something new today?</Text>
           </View>
           <Pressable
             onPress={() => router.push('/(tabs)/profile')}
@@ -136,10 +135,34 @@ export default function HomeScreen() {
           </ImageBackground>
         </Animated.View>
 
-        {/* Pro banner for free users */}
-        {!user?.is_pro && (
+        {/* Pro/Free banner */}
+        {user?.is_pro ? (
           <Animated.View entering={FadeInDown.delay(200)}>
-            <Pressable onPress={() => router.push('/(tabs)/profile')}>
+            <LinearGradient
+              colors={['#1a1a2e', '#2d2d3f']}
+              style={styles.proBanner}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}>
+              <View style={styles.proBannerContent}>
+                <View style={styles.proMemberIconBg}>
+                  <Ionicons name="trophy" size={20} color="#e8c98a" />
+                </View>
+                <View style={styles.proBannerText}>
+                  <Text style={styles.proBannerTitle}>You're a Pro Member</Text>
+                  <Text style={styles.proBannerDesc}>Unlimited generations · No watermarks</Text>
+                </View>
+              </View>
+              <View style={styles.proBadges}>
+                <View style={styles.proBadgePill}>
+                  <Ionicons name="infinite" size={12} color="#e8c98a" />
+                  <Text style={styles.proBadgePillText}>Unlimited</Text>
+                </View>
+              </View>
+            </LinearGradient>
+          </Animated.View>
+        ) : (
+          <Animated.View entering={FadeInDown.delay(200)}>
+            <Pressable onPress={() => setShowProPopup(true)}>
               <LinearGradient
                 colors={['#1a1a2e', '#2d2d3f']}
                 style={styles.proBanner}
@@ -165,7 +188,7 @@ export default function HomeScreen() {
               key={action.id}
               onPress={() => {
                 if (action.id === 'upload' || action.id === 'url') router.push('/(tabs)/tryon');
-                else if (action.id === 'history') router.push('/(tabs)/profile');
+                else if (action.id === 'stylist') router.push('/(tabs)/style');
                 else if (action.id === 'measure') router.push('/(tabs)/profile');
               }}
               style={styles.quickAction}>
@@ -189,10 +212,10 @@ export default function HomeScreen() {
               entering={FadeInDown.delay(450 + index * 80)}>
               <Pressable
                 onPress={() => router.push(feature.route)}
-                style={styles.featureCardWrapper}>
+                style={[styles.featureCardWrapper, { width: CARD_WIDTH }]}>
                 <ImageBackground
                   source={feature.bgImage}
-                  style={styles.featureCard}
+                  style={[styles.featureCard, { width: CARD_WIDTH, height: CARD_WIDTH * 1.15 }]}
                   imageStyle={styles.featureCardBgImage}>
                   <LinearGradient
                     colors={[feature.gradient[0] + 'DD', feature.gradient[1] + 'EE']}
@@ -248,7 +271,7 @@ export default function HomeScreen() {
           ))}
         </ScrollView>
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: TAB_BAR_SPACER }} />
       </ScrollView>
       <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} />
     </SafeAreaView>
@@ -265,7 +288,7 @@ const styles = StyleSheet.create({
     marginTop: Spacing.base,
     marginBottom: Spacing.base,
   },
-  headerLeft: {},
+  headerLeft: { flex: 1, marginRight: Spacing.md },
   greeting: { fontSize: FontSize.sm, color: Colors.light.textSecondary, fontWeight: '500' },
   welcomeSub: {
     fontSize: FontSize.xs,
@@ -338,10 +361,29 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     marginBottom: Spacing.xl,
   },
-  proBannerContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  proBannerText: {},
+  proBannerContent: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, flex: 1 },
+  proBannerText: { flex: 1 },
   proBannerTitle: { fontSize: FontSize.base, fontWeight: '700', color: '#e8c98a' },
   proBannerDesc: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  proMemberIconBg: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: 'rgba(232,201,138,0.15)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  proBadges: { flexDirection: 'row', gap: 4, marginLeft: Spacing.sm },
+  proBadgePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 3,
+    backgroundColor: 'rgba(232,201,138,0.15)',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  proBadgePillText: { fontSize: 10, fontWeight: '600', color: '#e8c98a' },
   quickActionsRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -378,7 +420,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   featureCardWrapper: {
-    width: CARD_WIDTH,
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     shadowColor: '#000',
@@ -388,8 +429,6 @@ const styles = StyleSheet.create({
     elevation: 6,
   },
   featureCard: {
-    width: CARD_WIDTH,
-    height: CARD_WIDTH * 1.15,
   },
   featureCardBgImage: {
     borderRadius: BorderRadius.xl,

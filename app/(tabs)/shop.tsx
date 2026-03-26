@@ -7,7 +7,7 @@ import {
   Pressable,
   TextInput,
   Image,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   RefreshControl,
   ScrollView,
@@ -16,12 +16,9 @@ import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, TAB_BAR_SPACER } from '@/constants/theme';
 import { apiGet, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
-
-const { width } = Dimensions.get('window');
-const PRODUCT_WIDTH = (width - Spacing.xl * 2 - Spacing.md) / 2;
 
 interface Store {
   id: number;
@@ -44,6 +41,8 @@ interface Product {
 
 export default function ShopScreen() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const PRODUCT_WIDTH = (width - Spacing.xl * 2 - Spacing.md) / 2;
   const [stores, setStores] = useState<Store[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [search, setSearch] = useState('');
@@ -135,7 +134,7 @@ export default function ShopScreen() {
     <Animated.View entering={FadeInDown.delay(Math.min(index * 50, 400))}>
       <Pressable
         onPress={() => router.push(`/store-tryon?product=${item.id}&store=${item.store_id || ''}`)}
-        style={styles.productCard}>
+        style={[styles.productCard, { width: PRODUCT_WIDTH }]}>
         <Image
           source={{ uri: resolveImageUrl(item.image_url) }}
           style={styles.productImage}
@@ -213,7 +212,7 @@ export default function ShopScreen() {
 
       {selectedStore && (
         <View style={styles.selectedBrandBar}>
-          <Text style={styles.selectedBrandName}>
+          <Text style={styles.selectedBrandName} numberOfLines={1}>
             {stores.find((s) => s.id === selectedStore)?.name || 'Store'}
           </Text>
           <Pressable onPress={() => setSelectedStore(null)} style={styles.selectedBrandClose}>
@@ -246,7 +245,7 @@ export default function ShopScreen() {
               <Pressable
                 key={store.id}
                 onPress={() => setSelectedStore(store.id)}
-                style={styles.brandGridCard}>
+                style={[styles.brandGridCard, { width: PRODUCT_WIDTH }]}>
                 {store.logo_url ? (
                   <Image source={{ uri: resolveImageUrl(store.logo_url) }} style={styles.brandGridLogo} />
                 ) : (
@@ -261,7 +260,7 @@ export default function ShopScreen() {
               </Pressable>
             ))}
           </View>
-          <View style={{ height: 120 }} />
+          <View style={{ height: TAB_BAR_SPACER }} />
         </ScrollView>
       ) : (
         <FlatList
@@ -367,7 +366,6 @@ const styles = StyleSheet.create({
     gap: Spacing.md,
   },
   brandGridCard: {
-    width: (width - Spacing.xl * 2 - Spacing.md) / 2,
     backgroundColor: '#fff',
     borderRadius: BorderRadius.lg,
     padding: Spacing.lg,
@@ -426,6 +424,8 @@ const styles = StyleSheet.create({
     fontSize: FontSize.md,
     fontWeight: '700',
     color: Colors.light.charcoal,
+    flex: 1,
+    marginRight: Spacing.sm,
   },
   selectedBrandClose: {
     flexDirection: 'row',
@@ -447,10 +447,9 @@ const styles = StyleSheet.create({
     color: Colors.light.textMuted,
   },
   loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  productList: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.base, paddingBottom: 120 },
+  productList: { paddingHorizontal: Spacing.xl, paddingTop: Spacing.base, paddingBottom: TAB_BAR_SPACER },
   productRow: { gap: Spacing.md, marginBottom: Spacing.base },
   productCard: {
-    width: PRODUCT_WIDTH,
     borderRadius: BorderRadius.lg,
     backgroundColor: '#fff',
     shadowColor: '#000',
@@ -462,7 +461,7 @@ const styles = StyleSheet.create({
   },
   productImage: {
     width: '100%',
-    height: PRODUCT_WIDTH * 1.2,
+    aspectRatio: 5 / 6,
     resizeMode: 'cover',
     backgroundColor: Colors.light.surfaceSecondary,
   },

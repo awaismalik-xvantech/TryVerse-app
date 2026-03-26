@@ -88,6 +88,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const userData = (await response.json()) as Record<string, unknown>;
+
+      try {
+        const subRes = await apiFetch('/api/subscription/status');
+        if (subRes.ok) {
+          const subData = (await subRes.json()) as Record<string, unknown>;
+          userData.is_pro = subData.is_pro === true;
+          userData.subscription_tier = subData.plan as string || 'free';
+        }
+      } catch {}
+
       await setUser(userData);
       setUserState(userData as unknown as UserData);
     } catch {

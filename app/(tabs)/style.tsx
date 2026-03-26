@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,7 @@ import {
   Pressable,
   Image,
   TextInput,
-  Dimensions,
+  useWindowDimensions,
   ActivityIndicator,
   Alert,
   Platform,
@@ -18,42 +18,71 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
-import { apiUpload, apiFetch, API_URL } from '@/lib/api';
+import { Colors, Spacing, FontSize, BorderRadius, TAB_BAR_SPACER } from '@/constants/theme';
+import { apiUpload, apiFetch, apiGet, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
 import { ImageResult } from '@/components/ImageResult';
 import { ProUpgradeModal } from '@/components/ProUpgradeModal';
 import { useAuth } from '@/lib/auth';
 
-const { width } = Dimensions.get('window');
-
 type Tab = 'stylist' | 'poses';
 
-const poses = [
-  { slug: 'confident-standing', name: 'Confident Standing', prompt: 'Confident standing pose, weight on one hip, shoulders back, professional fashion photography', img: require('@/assets/images/poses/confident-standing.jpg') },
-  { slug: 'executive-walk', name: 'Executive Walk', prompt: 'Walking confidently mid-stride, one leg forward, arms swinging naturally, executive fashion photography', img: require('@/assets/images/poses/executive-walk.jpg') },
-  { slug: 'business-portrait', name: 'Business Portrait', prompt: 'Professional business portrait, slight head tilt, direct eye contact, upper body composition', img: require('@/assets/images/poses/business-portrait.jpg') },
-  { slug: 'over-the-shoulder', name: 'Over the Shoulder', prompt: 'Looking over the shoulder, body turned 45 degrees from camera, head turned back towards lens', img: require('@/assets/images/poses/over-the-shoulder.jpg') },
-  { slug: 'casual-lean', name: 'Casual Lean', prompt: 'Casually leaning against a wall, one foot up, arms relaxed, natural effortless vibe', img: require('@/assets/images/poses/casual-lean.jpg') },
-  { slug: 'relaxed-seated', name: 'Relaxed Seated', prompt: 'Seated on a chair or bench, one leg crossed, relaxed sophisticated look', img: require('@/assets/images/poses/relaxed-seated.jpg') },
-  { slug: 'hands-in-pockets', name: 'Hands in Pockets', prompt: 'Hands in pockets, relaxed confident stance, slight head tilt, casual cool fashion look', img: require('@/assets/images/poses/hands-in-pockets.jpg') },
-  { slug: 'street-stroll', name: 'Street Stroll', prompt: 'Walking on a city street, natural stride, looking slightly away from camera, street style fashion', img: require('@/assets/images/poses/street-stroll.jpg') },
-  { slug: 'window-gaze', name: 'Window Gaze', prompt: 'Standing by a window gazing out, soft natural light illuminating face, contemplative elegant pose', img: require('@/assets/images/poses/window-gaze.jpg') },
-  { slug: 'model-turn', name: 'Model Turn', prompt: 'Fashion model turn pose, body at 3/4 angle, head facing camera, runway-style confidence', img: require('@/assets/images/poses/model-turn.jpg') },
-  { slug: 'dramatic-profile', name: 'Dramatic Profile', prompt: 'Dramatic side profile shot, strong jawline visible, moody artistic fashion photography', img: require('@/assets/images/poses/dramatic-profile.jpg') },
-  { slug: 'floor-pose', name: 'Floor Pose', prompt: 'Seated on the floor, legs extended, leaning on one arm, editorial fashion photography', img: require('@/assets/images/poses/floor-pose.jpg') },
-  { slug: 'coffee-shop', name: 'Coffee Shop', prompt: 'Sitting in a coffee shop, holding a cup, warm ambient lighting, lifestyle fashion photography', img: require('@/assets/images/poses/coffee-shop.jpg') },
-  { slug: 'urban-background', name: 'Urban Background', prompt: 'Standing against urban graffiti wall background, streetwear fashion, edgy confident pose', img: require('@/assets/images/poses/urban-background.jpg') },
-  { slug: 'sunlight-portrait', name: 'Sunlight Portrait', prompt: 'Golden hour sunlight portrait, warm tones, soft backlighting, natural beauty fashion photo', img: require('@/assets/images/poses/sunlight-portrait.jpg') },
-  { slug: 'action-stride', name: 'Action Stride', prompt: 'Dynamic walking action shot, coat or hair flowing with movement, energetic confident stride', img: require('@/assets/images/poses/action-stride.jpg') },
-  { slug: 'wind-blown', name: 'Wind Blown', prompt: 'Wind-blown hair and clothes, natural movement, outdoor fashion photography, dynamic energy', img: require('@/assets/images/poses/wind-blown.jpg') },
-  { slug: 'staircase-pose', name: 'Staircase Pose', prompt: 'Posed on a staircase, one step higher, looking down at camera, elegant architectural setting', img: require('@/assets/images/poses/staircase-pose.jpg') },
-  { slug: 'jump-shot', name: 'Jump Shot', prompt: 'Mid-air jump shot, arms and legs dynamic, joyful energetic expression, fashion photography', img: require('@/assets/images/poses/jump-shot.jpg') },
-  { slug: 'dance-move', name: 'Dance Move', prompt: 'Dynamic dance pose, one arm extended, body in elegant motion, artistic fashion photography', img: require('@/assets/images/poses/dance-move.jpg') },
-];
+interface PosePreset {
+  id: number;
+  name: string;
+  slug: string;
+  category: string;
+  description: string | null;
+  thumbnail_url: string | null;
+  is_premium: boolean;
+  display_order: number;
+}
 
-const POSE_SIZE = (width - Spacing.xl * 2 - Spacing.md * 2) / 3;
+const PRESET_THUMBNAIL_MAP: Record<string, ReturnType<typeof require>> = {
+  'confident-standing': require('@/assets/images/poses/confident-standing.jpg'),
+  'confident_standing': require('@/assets/images/poses/confident-standing.jpg'),
+  'executive-walk': require('@/assets/images/poses/executive-walk.jpg'),
+  'executive_walk': require('@/assets/images/poses/executive-walk.jpg'),
+  'business-portrait': require('@/assets/images/poses/business-portrait.jpg'),
+  'business_portrait': require('@/assets/images/poses/business-portrait.jpg'),
+  'over-the-shoulder': require('@/assets/images/poses/over-the-shoulder.jpg'),
+  'over_the_shoulder': require('@/assets/images/poses/over-the-shoulder.jpg'),
+  'casual-lean': require('@/assets/images/poses/casual-lean.jpg'),
+  'casual_lean': require('@/assets/images/poses/casual-lean.jpg'),
+  'relaxed-seated': require('@/assets/images/poses/relaxed-seated.jpg'),
+  'relaxed_seated': require('@/assets/images/poses/relaxed-seated.jpg'),
+  'hands-in-pockets': require('@/assets/images/poses/hands-in-pockets.jpg'),
+  'hands_in_pockets': require('@/assets/images/poses/hands-in-pockets.jpg'),
+  'street-stroll': require('@/assets/images/poses/street-stroll.jpg'),
+  'street_stroll': require('@/assets/images/poses/street-stroll.jpg'),
+  'window-gaze': require('@/assets/images/poses/window-gaze.jpg'),
+  'window_gaze': require('@/assets/images/poses/window-gaze.jpg'),
+  'model-turn': require('@/assets/images/poses/model-turn.jpg'),
+  'model_turn': require('@/assets/images/poses/model-turn.jpg'),
+  'dramatic-profile': require('@/assets/images/poses/dramatic-profile.jpg'),
+  'dramatic_profile': require('@/assets/images/poses/dramatic-profile.jpg'),
+  'floor-pose': require('@/assets/images/poses/floor-pose.jpg'),
+  'floor_pose': require('@/assets/images/poses/floor-pose.jpg'),
+  'coffee-shop': require('@/assets/images/poses/coffee-shop.jpg'),
+  'coffee_shop': require('@/assets/images/poses/coffee-shop.jpg'),
+  'urban-background': require('@/assets/images/poses/urban-background.jpg'),
+  'urban_background': require('@/assets/images/poses/urban-background.jpg'),
+  'sunlight-portrait': require('@/assets/images/poses/sunlight-portrait.jpg'),
+  'sunlight_portrait': require('@/assets/images/poses/sunlight-portrait.jpg'),
+  'action-stride': require('@/assets/images/poses/action-stride.jpg'),
+  'action_stride': require('@/assets/images/poses/action-stride.jpg'),
+  'wind-blown': require('@/assets/images/poses/wind-blown.jpg'),
+  'wind_blown': require('@/assets/images/poses/wind-blown.jpg'),
+  'staircase-pose': require('@/assets/images/poses/staircase-pose.jpg'),
+  'staircase_pose': require('@/assets/images/poses/staircase-pose.jpg'),
+  'jump-shot': require('@/assets/images/poses/jump-shot.jpg'),
+  'jump_shot': require('@/assets/images/poses/jump-shot.jpg'),
+  'dance-move': require('@/assets/images/poses/dance-move.jpg'),
+  'dance_move': require('@/assets/images/poses/dance-move.jpg'),
+};
+
+// POSE_SIZE computed inside the component using useWindowDimensions
 
 type StylistCategoryId = 'ai_stylist' | 'travel' | 'search';
 
@@ -96,19 +125,37 @@ const STYLIST_CATEGORY_WELCOME: Record<StylistCategoryId, string> = {
 
 export default function StyleScreen() {
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
+  const POSE_SIZE = (width - Spacing.xl * 2 - Spacing.md * 2) / 3;
   const [showProPopup, setShowProPopup] = useState(false);
   const [tab, setTab] = useState<Tab>('stylist');
   const [chatInput, setChatInput] = useState('');
   const [messages, setMessages] = useState<{ role: 'user' | 'ai'; text: string }[]>([]);
   const [isSending, setIsSending] = useState(false);
   const [conversationId, setConversationId] = useState<number | null>(null);
-  const [selectedPose, setSelectedPose] = useState<string | null>(null);
+  const [selectedPresetIds, setSelectedPresetIds] = useState<Set<number>>(new Set());
   const [posePhotoUri, setPosePhotoUri] = useState<string | null>(null);
   const [poseResult, setPoseResult] = useState<string | null>(null);
   const [poseFeedback, setPoseFeedback] = useState<string | null>(null);
   const [isGeneratingPose, setIsGeneratingPose] = useState(false);
   const [stylistPhotoUri, setStylistPhotoUri] = useState<string | null>(null);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [posePresets, setPosePresets] = useState<PosePreset[]>([]);
+  const [loadingPresets, setLoadingPresets] = useState(false);
+
+  const loadPosePresets = useCallback(async () => {
+    setLoadingPresets(true);
+    const res = await apiGet<PosePreset[]>('/api/pose/presets');
+    if (res.ok && res.data) {
+      setPosePresets(res.data);
+      console.log('[POSE] Presets loaded:', res.data.length);
+    }
+    setLoadingPresets(false);
+  }, []);
+
+  useEffect(() => {
+    loadPosePresets();
+  }, [loadPosePresets]);
 
   const clearStylistSession = () => {
     setStylistPhotoUri(null);
@@ -237,20 +284,34 @@ export default function StyleScreen() {
     }
   };
 
+  const togglePresetSelection = (id: number) => {
+    setSelectedPresetIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        if (next.size >= 3) {
+          Alert.alert('Limit Reached', 'You can select up to 3 poses at a time.');
+          return prev;
+        }
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const generatePose = async () => {
-    if (!posePhotoUri || !selectedPose) {
-      Alert.alert('Missing', 'Please select a photo and a pose.');
+    if (!posePhotoUri || selectedPresetIds.size === 0) {
+      Alert.alert('Missing', 'Please select a photo and at least one pose.');
       return;
     }
-    const endpoint = `${API_URL}/api/pose/generate`;
-    console.log('[POSE] Generation started', { endpoint, selectedPose });
+    const presetIdsArray = Array.from(selectedPresetIds);
+    const endpoint = `${API_URL}/api/pose/generate-from-presets`;
+    console.log('[POSE] Generation started', { endpoint, presetIds: presetIdsArray });
     setIsGeneratingPose(true);
-    const selected = poses.find((p) => p.slug === selectedPose);
-    const prompt1 = selected?.prompt || `${selected?.name || selectedPose} fashion photography pose`;
-    const secondPose = poses.find((p) => p.slug !== selectedPose);
-    const prompt2 = secondPose?.prompt || 'Professional fashion portrait with confident posture';
-    const posesJson = JSON.stringify([prompt1, prompt2]);
-    const res = await apiUpload('/api/pose/generate', posePhotoUri, 'file', { poses: posesJson });
+    const res = await apiUpload('/api/pose/generate-from-presets', posePhotoUri, 'file', {
+      preset_ids: JSON.stringify(presetIdsArray),
+    });
     setIsGeneratingPose(false);
     console.log('[POSE] Generation response', { ok: res.ok, status: res.status, hasData: !!res.data });
     if (res.ok && res.data) {
@@ -362,8 +423,8 @@ export default function StyleScreen() {
         ) : (
           <KeyboardAvoidingView
             style={styles.stylistChatKeyboard}
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}>
+            behavior={Platform.OS === 'ios' ? 'padding' : 'padding'}
+            keyboardVerticalOffset={Platform.OS === 'ios' ? 100 : 80}>
             <View style={styles.chatContainer}>
               <View style={styles.stylistChatHeader}>
                 <Pressable
@@ -389,11 +450,20 @@ export default function StyleScreen() {
                 {messages.map((msg, i) => (
                   <Animated.View
                     key={i}
-                    entering={FadeInDown.delay(i * 50)}
+                    entering={FadeInDown.delay(Math.min(i * 50, 200))}
                     style={[styles.chatBubble, msg.role === 'user' ? styles.userBubble : styles.aiBubble]}>
-                    <Text style={[styles.chatBubbleText, msg.role === 'user' && styles.userBubbleText]}>
-                      {msg.text}
-                    </Text>
+                    {msg.role === 'user' ? (
+                      <Text style={[styles.chatBubbleText, styles.userBubbleText]}>{msg.text}</Text>
+                    ) : (
+                      <Text style={styles.chatBubbleText}>
+                        {msg.text.split(/(\*\*[^*]+\*\*)/g).map((part, j) => {
+                          if (part.startsWith('**') && part.endsWith('**')) {
+                            return <Text key={j} style={{ fontWeight: '700', color: Colors.light.charcoal }}>{part.slice(2, -2)}</Text>;
+                          }
+                          return <Text key={j}>{part}</Text>;
+                        })}
+                      </Text>
+                    )}
                   </Animated.View>
                 ))}
                 {isSending && (
@@ -440,33 +510,52 @@ export default function StyleScreen() {
           </Pressable>
 
           {/* Pose Grid */}
-          <Text style={styles.poseGridTitle}>Choose a Pose</Text>
-          <View style={styles.poseGrid}>
-            {poses.map((pose, i) => (
-              <Pressable
-                key={pose.slug}
-                onPress={() => setSelectedPose(pose.slug)}
-                style={[styles.poseGridItem, selectedPose === pose.slug && styles.poseGridItemSelected]}>
-                <Image source={pose.img} style={styles.poseGridImage} />
-                <LinearGradient
-                  colors={['transparent', 'rgba(0,0,0,0.7)']}
-                  style={styles.poseGridOverlay}>
-                  <Text style={styles.poseGridName} numberOfLines={1}>{pose.name}</Text>
-                </LinearGradient>
-                {selectedPose === pose.slug && (
-                  <View style={styles.poseCheck}>
-                    <Ionicons name="checkmark-circle" size={24} color={Colors.light.gold} />
-                  </View>
-                )}
-              </Pressable>
-            ))}
-          </View>
+          <Text style={styles.poseGridTitle}>Choose Poses (up to 3)</Text>
+          {loadingPresets ? (
+            <ActivityIndicator size="large" color={Colors.light.gold} style={{ marginVertical: Spacing.xl }} />
+          ) : (
+            <View style={styles.poseGrid}>
+              {posePresets.map((preset) => {
+                const isSelected = selectedPresetIds.has(preset.id);
+                const localThumb = PRESET_THUMBNAIL_MAP[preset.slug];
+                const imageSource = localThumb
+                  ? localThumb
+                  : preset.thumbnail_url
+                    ? { uri: preset.thumbnail_url.startsWith('http') ? preset.thumbnail_url : `${API_URL}${preset.thumbnail_url}` }
+                    : null;
+                return (
+                  <Pressable
+                    key={preset.id}
+                    onPress={() => togglePresetSelection(preset.id)}
+                    style={[styles.poseGridItem, { width: POSE_SIZE, height: POSE_SIZE * 1.3 }, isSelected && styles.poseGridItemSelected]}>
+                    {imageSource ? (
+                      <Image source={imageSource} style={styles.poseGridImage} />
+                    ) : (
+                      <View style={[styles.poseGridImage, { backgroundColor: Colors.light.surfaceSecondary, justifyContent: 'center', alignItems: 'center' }]}>
+                        <Ionicons name="body" size={24} color={Colors.light.textMuted} />
+                      </View>
+                    )}
+                    <LinearGradient
+                      colors={['transparent', 'rgba(0,0,0,0.7)']}
+                      style={styles.poseGridOverlay}>
+                      <Text style={styles.poseGridName} numberOfLines={1}>{preset.name}</Text>
+                    </LinearGradient>
+                    {isSelected && (
+                      <View style={styles.poseCheck}>
+                        <Ionicons name="checkmark-circle" size={24} color={Colors.light.gold} />
+                      </View>
+                    )}
+                  </Pressable>
+                );
+              })}
+            </View>
+          )}
 
           {/* Generate */}
           <Pressable
             onPress={generatePose}
-            disabled={isGeneratingPose || !posePhotoUri || !selectedPose}
-            style={[styles.generatePoseButton, (!posePhotoUri || !selectedPose) && { opacity: 0.5 }]}>
+            disabled={isGeneratingPose || !posePhotoUri || selectedPresetIds.size === 0}
+            style={[styles.generatePoseButton, (!posePhotoUri || selectedPresetIds.size === 0) && { opacity: 0.5 }]}>
             <LinearGradient
               colors={['#c9a96e', '#e8c98a']}
               style={styles.generatePoseGradient}
@@ -477,7 +566,9 @@ export default function StyleScreen() {
               ) : (
                 <>
                   <Ionicons name="sparkles" size={20} color="#1a1a2e" />
-                  <Text style={styles.generatePoseText}>Generate Pose</Text>
+                  <Text style={styles.generatePoseText}>
+                    Generate {selectedPresetIds.size > 0 ? `${selectedPresetIds.size} Pose${selectedPresetIds.size > 1 ? 's' : ''}` : 'Pose'}
+                  </Text>
                 </>
               )}
             </LinearGradient>
@@ -487,7 +578,7 @@ export default function StyleScreen() {
             <ImageResult imageUrl={poseResult} title="Your Pose Result" aiFeedback={poseFeedback} />
           )}
 
-          <View style={{ height: 120 }} />
+          <View style={{ height: TAB_BAR_SPACER }} />
         </ScrollView>
       )}
       <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} variant="compact" />
@@ -659,23 +750,33 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-end',
     paddingHorizontal: Spacing.xl,
-    paddingVertical: Spacing.md,
+    paddingTop: Spacing.sm,
+    paddingBottom: Platform.OS === 'ios' ? 30 : 12,
     borderTopWidth: 1,
     borderTopColor: Colors.light.borderLight,
     gap: Spacing.sm,
-    paddingBottom: Platform.OS === 'ios' ? 30 : 20,
+    backgroundColor: '#fff',
   },
   chatInput: {
     flex: 1,
     fontSize: FontSize.base,
     color: Colors.light.text,
+    minHeight: 44,
     maxHeight: 100,
     backgroundColor: Colors.light.surfaceSecondary,
     borderRadius: BorderRadius.lg,
     paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.md,
+    paddingVertical: Platform.OS === 'ios' ? Spacing.md : Spacing.sm,
   },
-  sendButton: { padding: Spacing.md },
+  sendButton: {
+    padding: Spacing.sm,
+    width: 44,
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.light.surfaceSecondary,
+    borderRadius: 22,
+  },
   poseContent: { paddingHorizontal: Spacing.xl },
   poseUpload: {
     borderRadius: BorderRadius.lg,
@@ -691,8 +792,6 @@ const styles = StyleSheet.create({
   poseGridTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.light.charcoal, marginBottom: Spacing.md },
   poseGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing.sm },
   poseGridItem: {
-    width: POSE_SIZE,
-    height: POSE_SIZE * 1.3,
     borderRadius: BorderRadius.md,
     overflow: 'hidden',
     position: 'relative',

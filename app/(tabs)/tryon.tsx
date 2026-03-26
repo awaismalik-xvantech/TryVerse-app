@@ -9,13 +9,13 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
-  Dimensions,
+  useWindowDimensions,
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { sendLocalNotification } from '@/lib/notifications';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, TAB_BAR_SPACER } from '@/constants/theme';
 import { apiUpload, apiFetch, API_URL } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { GeneratingOverlay } from '@/components/GeneratingOverlay';
@@ -23,10 +23,9 @@ import { ImageResult } from '@/components/ImageResult';
 import { ProUpgradeModal } from '@/components/ProUpgradeModal';
 import { useAuth } from '@/lib/auth';
 
-const { width } = Dimensions.get('window');
-
 export default function TryOnScreen() {
   const { user } = useAuth();
+  const { width } = useWindowDimensions();
   const [showProPopup, setShowProPopup] = useState(false);
   const [selfieUri, setSelfieUri] = useState<string | null>(null);
   const [productUrl, setProductUrl] = useState('');
@@ -116,11 +115,15 @@ export default function TryOnScreen() {
 
       if (response.ok) {
         const data = await response.json();
-        console.log('[GENERATION] Virtual Try-On: generation completed', { hasResult: !!data.result_photo_url });
-        if (data.result_photo_url) {
-          const url = data.result_photo_url.startsWith('http')
-            ? data.result_photo_url
-            : `${API_URL}${data.result_photo_url}`;
+        const resultUrl = data.result_image_url || data.result_photo_url;
+        console.log('[GENERATION] Virtual Try-On: generation completed', {
+          hasResult: !!resultUrl,
+          generationSuccess: data.generation_success,
+        });
+        if (data.generation_success && resultUrl) {
+          const url = resultUrl.startsWith('http')
+            ? resultUrl
+            : `${API_URL}${resultUrl}`;
           setResultImageUrl(url);
           setAiFeedback(data.ai_feedback || null);
           sendLocalNotification('Image Ready!', 'Your try-on image has been generated. Open the app to view and save it.');
@@ -131,6 +134,8 @@ export default function TryOnScreen() {
           if (!user?.is_pro) {
             setTimeout(() => setShowProPopup(true), 2000);
           }
+        } else if (data.error) {
+          Alert.alert('Generation Failed', data.error);
         }
       } else {
         const err = await response.json().catch(() => null);
@@ -252,7 +257,7 @@ export default function TryOnScreen() {
           <ImageResult imageUrl={resultImageUrl} title="Your Try-On Result" aiFeedback={aiFeedback} />
         )}
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: TAB_BAR_SPACER }} />
       </ScrollView>
       <ProUpgradeModal visible={showProPopup} onClose={() => setShowProPopup(false)} variant="compact" />
     </SafeAreaView>
@@ -307,7 +312,7 @@ const styles = StyleSheet.create({
   uploadTitle: { fontSize: FontSize.md, fontWeight: '700', color: Colors.light.charcoal },
   uploadDesc: { fontSize: FontSize.sm, color: Colors.light.textSecondary, marginTop: 4 },
   selfieContainer: { position: 'relative' },
-  selfieImage: { width: '100%', height: width - Spacing.xl * 2, resizeMode: 'cover' },
+  selfieImage: { width: '100%', aspectRatio: 3 / 4, resizeMode: 'cover' },
   uploadOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.5)',

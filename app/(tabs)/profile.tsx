@@ -9,12 +9,13 @@ import {
   Switch,
   TextInput,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { Ionicons } from '@expo/vector-icons';
-import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
+import { Colors, Spacing, FontSize, BorderRadius, TAB_BAR_SPACER } from '@/constants/theme';
 import { useAuth } from '@/lib/auth';
 import { apiGet, apiFetch } from '@/lib/api';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -233,8 +234,8 @@ export default function ProfileScreen() {
           <LinearGradient colors={['#c9a96e', '#e8c98a']} style={styles.avatarLarge}>
             <Text style={styles.avatarLargeText}>{firstName.charAt(0).toUpperCase()}</Text>
           </LinearGradient>
-          <Text style={styles.profileName}>{user?.full_name || 'User'}</Text>
-          <Text style={styles.profileEmail}>{user?.email || ''}</Text>
+          <Text style={styles.profileName} numberOfLines={1}>{user?.full_name || 'User'}</Text>
+          <Text style={styles.profileEmail} numberOfLines={1}>{user?.email || ''}</Text>
           {user?.is_pro ? (
             <View style={styles.proBadge}>
               <Ionicons name="diamond" size={14} color="#e8c98a" />
@@ -259,16 +260,30 @@ export default function ProfileScreen() {
             onPress={() => setSection('measurements')}
           />
           <MenuItem
-            icon="time-outline"
-            label="Try-On History"
-            desc="Your past generations"
-            onPress={() => router.push('/tryon-history')}
-          />
-          <MenuItem
             icon="card-outline"
             label="Subscription"
             desc={user?.is_pro ? 'Pro Plan' : 'Free Plan'}
-            onPress={() => Alert.alert('Subscription', user?.is_pro ? 'You are on the Pro Plan with unlimited try-ons and HD quality.' : 'Upgrade to Pro for unlimited try-ons, HD quality, and exclusive features.')}
+            onPress={async () => {
+              if (user?.is_pro) {
+                try {
+                  const res = await apiFetch('/api/subscription/portal', { method: 'POST' });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.portal_url) { await Linking.openURL(data.portal_url); return; }
+                  }
+                } catch {}
+                Alert.alert('Pro Plan', 'You are on the Pro Plan with unlimited try-ons, HD quality, and no watermarks.');
+              } else {
+                try {
+                  const res = await apiFetch('/api/subscription/create-checkout', { method: 'POST' });
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data.checkout_url) { await Linking.openURL(data.checkout_url); return; }
+                  }
+                } catch {}
+                Alert.alert('Upgrade', 'Upgrade to Pro for unlimited try-ons, HD quality, and exclusive features.');
+              }
+            }}
           />
         </Animated.View>
 
@@ -308,7 +323,7 @@ export default function ProfileScreen() {
           </Pressable>
         </Animated.View>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: TAB_BAR_SPACER }} />
       </ScrollView>
     </SafeAreaView>
   );

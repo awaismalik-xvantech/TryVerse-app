@@ -3,7 +3,7 @@ import {
   View,
   Text,
   StyleSheet,
-  Dimensions,
+  useWindowDimensions,
   FlatList,
   Pressable,
   Image,
@@ -15,8 +15,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { Logo } from '@/components/Logo';
-
-const { width, height } = Dimensions.get('window');
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 const GRADIENT_OPACITY = 0.55;
 
@@ -71,6 +70,8 @@ const BUTTON_COLORS: readonly [string, string][] = [
 
 export default function OnboardingScreen() {
   const router = useRouter();
+  const { width, height } = useWindowDimensions();
+  const insets = useSafeAreaInsets();
   const [currentIndex, setCurrentIndex] = useState(0);
   const flatListRef = useRef<FlatList>(null);
 
@@ -103,7 +104,7 @@ export default function OnboardingScreen() {
       </View>
 
       {/* Full background image with semi-transparent gradient overlay */}
-      <View style={styles.imageArea}>
+      <View style={[styles.imageArea, { minHeight: height * 0.45 }]}>
         <Image source={item.image} style={styles.bgImage} />
         <LinearGradient
           colors={item.gradient}
@@ -129,7 +130,7 @@ export default function OnboardingScreen() {
   return (
     <View style={styles.container}>
       {/* Skip button */}
-      <Pressable onPress={handleSkip} style={styles.skipButton}>
+      <Pressable onPress={handleSkip} style={[styles.skipButton, { top: insets.top + 12 }]}>
         <Text style={styles.skipText}>Skip</Text>
       </Pressable>
 
@@ -146,7 +147,7 @@ export default function OnboardingScreen() {
       />
 
       {/* Bottom area */}
-      <View style={styles.bottomArea}>
+      <View style={[styles.bottomArea, { paddingBottom: Math.max(insets.bottom, 20) + 10 }]}>
         <View style={styles.dotsRow}>
           {slides.map((_, i) => (
             <View
@@ -186,7 +187,6 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.light.charcoal },
   skipButton: {
     position: 'absolute',
-    top: 58,
     right: Spacing.xl,
     zIndex: 10,
     backgroundColor: 'rgba(0,0,0,0.3)',
@@ -214,7 +214,6 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.xl,
     overflow: 'hidden',
     position: 'relative',
-    minHeight: height * 0.45,
   },
   bgImage: {
     width: '100%',
@@ -271,7 +270,6 @@ const styles = StyleSheet.create({
   },
   bottomArea: {
     paddingHorizontal: Spacing.xl,
-    paddingBottom: 50,
     gap: Spacing.lg,
   },
   dotsRow: {

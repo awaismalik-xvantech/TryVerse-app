@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { View, Text, Pressable, StyleSheet, Alert, Dimensions, ActivityIndicator } from 'react-native';
+import { useState, useEffect, useMemo } from 'react';
+import { View, Text, Pressable, StyleSheet, Alert, useWindowDimensions, ActivityIndicator } from 'react-native';
 import { Image as ExpoImage } from 'expo-image';
 import * as MediaLibrary from 'expo-media-library';
 import { File, Paths } from 'expo-file-system';
@@ -9,21 +9,95 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors, Spacing, FontSize, BorderRadius } from '@/constants/theme';
 import { API_URL, getToken } from '@/lib/api';
 
-const { width } = Dimensions.get('window');
-
 interface ImageResultProps {
   imageUrl: string;
   title?: string;
   aiFeedback?: string | null;
 }
 
+function extractStyleScore(text: string): { score: number | null; cleanText: string } {
+  const match = text.match(/\*\*Style Score:\s*(\d+(?:\.\d+)?)\s*\/\s*10\*\*/i);
+  if (!match) return { score: null, cleanText: text };
+  const score = parseFloat(match[1]);
+  const startIdx = text.indexOf(match[0]);
+  const scoreLine = text.substring(startIdx);
+  const endOfLine = scoreLine.indexOf('\n');
+  const fullLine = endOfLine > -1 ? text.substring(startIdx, startIdx + endOfLine) : match[0];
+  const cleanText = text.replace(fullLine, '').replace(/^\s*\n/, '').trim();
+  return { score: isNaN(score) ? null : score, cleanText };
+}
+
+function getScoreTheme(score: number) {
+  if (score >= 8) return { label: 'Excellent Match', color: '#16a34a', bg: '#f0fdf4', border: '#bbf7d0', gradient: ['#16a34a', '#22c55e'] as [string, string] };
+  if (score >= 6) return { label: 'Good Match', color: '#c9a96e', bg: '#faf6ef', border: '#e8c98a', gradient: ['#c9a96e', '#e8c98a'] as [string, string] };
+  if (score >= 4) return { label: 'Fair Match', color: '#ea580c', bg: '#fff7ed', border: '#fed7aa', gradient: ['#ea580c', '#f97316'] as [string, string] };
+  return { label: 'Poor Match', color: '#dc2626', bg: '#fef2f2', border: '#fecaca', gradient: ['#dc2626', '#ef4444'] as [string, string] };
+}
+
+function StyleScoreCard({ score }: { score: number }) {
+  const theme = getScoreTheme(score);
+  const fullStars = Math.floor(score / 2);
+  const halfStar = (score % 2) >= 1;
+  const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
+
+  return (
+    <View style={[scoreStyles.container, { backgroundColor: theme.bg, borderColor: theme.border }]}>
+      <LinearGradient
+        colors={theme.gradient}
+        style={scoreStyles.scoreBox}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}>
+        <Text style={scoreStyles.scoreNumber}>{score}</Text>
+        <Text style={scoreStyles.scoreDenom}>/10</Text>
+      </LinearGradient>
+      <View style={scoreStyles.info}>
+        <View style={scoreStyles.starsRow}>
+          {Array.from({ length: fullStars }, (_, i) => (
+            <Ionicons key={`f${i}`} name="star" size={16} color={theme.color} />
+          ))}
+          {halfStar && <Ionicons name="star-half" size={16} color={theme.color} />}
+          {Array.from({ length: emptyStars }, (_, i) => (
+            <Ionicons key={`e${i}`} name="star-outline" size={16} color="#d1d5db" />
+          ))}
+        </View>
+        <Text style={[scoreStyles.label, { color: theme.color }]}>{theme.label}</Text>
+        <Text style={scoreStyles.desc}>How well this product suits you</Text>
+      </View>
+    </View>
+  );
+}
+
+function RichFeedbackText({ text }: { text: string }) {
+  const parts = text.split(/(\*\*[^*]+\*\*)/g);
+  return (
+    <Text style={styles.feedbackText}>
+      {parts.map((part, i) => {
+        if (part.startsWith('**') && part.endsWith('**')) {
+          return (
+            <Text key={i} style={styles.feedbackBold}>
+              {part.slice(2, -2)}
+            </Text>
+          );
+        }
+        return <Text key={i}>{part}</Text>;
+      })}
+    </Text>
+  );
+}
+
 export function ImageResult({ imageUrl, title = 'Your Result', aiFeedback }: ImageResultProps) {
+  const { width } = useWindowDimensions();
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [localUri, setLocalUri] = useState<string | null>(null);
   const [loadingImage, setLoadingImage] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [retryKey, setRetryKey] = useState(0);
+
+  const parsedFeedback = useMemo(() => {
+    if (!aiFeedback) return null;
+    return extractStyleScore(aiFeedback);
+  }, [aiFeedback]);
 
   useEffect(() => {
     let cancelled = false;
@@ -93,7 +167,7 @@ export function ImageResult({ imageUrl, title = 'Your Result', aiFeedback }: Ima
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>{title}</Text>
+        <Text style={styles.title} numberOfLines={1}>{title}</Text>
         <View style={styles.badge}>
           <Ionicons name="checkmark-circle" size={16} color={Colors.light.success} />
           <Text style={styles.badgeText}>Generated</Text>
@@ -149,7 +223,7 @@ export function ImageResult({ imageUrl, title = 'Your Result', aiFeedback }: Ima
         </Pressable>
       </View>
 
-      {aiFeedback && (
+      {parsedFeedback && (
         <View style={styles.feedbackSection}>
           <View style={styles.feedbackHeader}>
             <View style={styles.feedbackIconBg}>
@@ -157,7 +231,10 @@ export function ImageResult({ imageUrl, title = 'Your Result', aiFeedback }: Ima
             </View>
             <Text style={styles.feedbackTitle}>AI Styling Feedback</Text>
           </View>
-          <Text style={styles.feedbackText}>{aiFeedback}</Text>
+          {parsedFeedback.score !== null && (
+            <StyleScoreCard score={parsedFeedback.score} />
+          )}
+          <RichFeedbackText text={parsedFeedback.cleanText} />
         </View>
       )}
 
@@ -176,7 +253,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  title: { fontSize: FontSize.md, fontWeight: '700', color: Colors.light.charcoal },
+  title: { fontSize: FontSize.md, fontWeight: '700', color: Colors.light.charcoal, flex: 1, marginRight: Spacing.sm },
   badge: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -196,7 +273,8 @@ const styles = StyleSheet.create({
   },
   image: {
     width: '100%',
-    height: width - Spacing.xl * 2,
+    aspectRatio: 1,
+    maxHeight: 500,
     backgroundColor: Colors.light.surfaceSecondary,
   },
   imageLoading: {
@@ -251,7 +329,11 @@ const styles = StyleSheet.create({
   feedbackText: {
     fontSize: FontSize.sm,
     color: Colors.light.textSecondary,
-    lineHeight: 20,
+    lineHeight: 22,
+  },
+  feedbackBold: {
+    fontWeight: '700',
+    color: Colors.light.charcoal,
   },
   actions: { marginTop: Spacing.md },
   saveButton: {
@@ -277,5 +359,52 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.sm,
     fontStyle: 'italic',
+  },
+});
+
+const scoreStyles = StyleSheet.create({
+  container: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    padding: Spacing.base,
+    gap: Spacing.base,
+    marginBottom: Spacing.md,
+  },
+  scoreBox: {
+    width: 56,
+    height: 56,
+    borderRadius: BorderRadius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  scoreNumber: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#fff',
+  },
+  scoreDenom: {
+    fontSize: 9,
+    fontWeight: '600',
+    color: 'rgba(255,255,255,0.8)',
+    marginTop: -2,
+  },
+  info: {
+    flex: 1,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    gap: 2,
+    marginBottom: 4,
+  },
+  label: {
+    fontSize: FontSize.sm,
+    fontWeight: '700',
+  },
+  desc: {
+    fontSize: FontSize.xs,
+    color: Colors.light.textMuted,
+    marginTop: 2,
   },
 });
